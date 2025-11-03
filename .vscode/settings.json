@@ -1,0 +1,21 @@
+{
+    "iis.configDir": "",
+    "files.associations": {
+        "**/scripts/*.sql": "postgres",
+        "*.sql": "postgres"
+    },
+    "sql.linter.enabled": false,
+    "mssql.enableQueryHistoryCapture": false,
+    "mssql.intelliSense.enableIntelliSense": false,
+    "mssql.enableConnectionPooling": false,
+    "[sql]": {
+        "editor.formatOnSave": false
+    },
+    "python.linting.enabled": true,
+    "editor.formatOnSave": true,
+    "[python]": {
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    }
+}

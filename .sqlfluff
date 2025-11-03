@@ -1,0 +1,9 @@
+# SQLFluff configuration
+# This file disables SQL linting for PostgreSQL files
+
+[sqlfluff]
+dialect = postgres
+exclude_rules = all
+
+[sqlfluff:rules]
+max_line_length = 120

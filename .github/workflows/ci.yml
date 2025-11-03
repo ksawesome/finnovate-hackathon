@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install core tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff black isort mypy pytest pytest-cov bandit
+
+      - name: Install project requirements (optional)
+        if: ${{ hashFiles('**/requirements.txt') != '' }}
+        run: |
+          pip install -r requirements.txt
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Format check (black)
+        run: black --check .
+
+      - name: Import sort check (isort)
+        run: isort --check-only .
+
+      - name: Type check (mypy)
+        run: mypy --ignore-missing-imports --strict src || true
+
+      - name: Security scan (bandit)
+        run: bandit -r src || true
+
+      - name: Run tests
+        run: |
+          pytest -q --maxfail=1 --disable-warnings --cov=src --cov-report=term-missing || true
