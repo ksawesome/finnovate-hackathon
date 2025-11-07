@@ -1,7 +1,7 @@
 """MongoDB operations for document-based data."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pymongo.collection import Collection
 
@@ -59,57 +59,57 @@ def get_query_library_collection() -> Collection:
 def init_mongo_collections():
     """Initialize MongoDB collections with indexes."""
     db = get_mongo_database()
-    
+
     # Supporting docs indexes
     supporting_docs = db["supporting_docs"]
     supporting_docs.create_index("gl_code")
     supporting_docs.create_index([("gl_code", 1), ("period", 1)])
-    
+
     # Audit trail indexes
     audit_trail = db["audit_trail"]
     audit_trail.create_index("gl_code")
     audit_trail.create_index("timestamp")
     audit_trail.create_index([("gl_code", 1), ("timestamp", -1)])
-    
+
     # Validation results indexes
     validation_results = db["validation_results"]
     validation_results.create_index("gl_code")
     validation_results.create_index("validation_suite")
-    
+
     # GL metadata indexes (extended GL account information)
     gl_metadata = db["gl_metadata"]
     gl_metadata.create_index([("gl_code", 1), ("company_code", 1), ("period", 1)], unique=True)
     gl_metadata.create_index("account_category")
     gl_metadata.create_index("criticality")
-    
+
     # Assignment details indexes (responsibility matrix metadata)
     assignment_details = db["assignment_details"]
     assignment_details.create_index([("assignment_id", 1)], unique=True)
     assignment_details.create_index([("gl_code", 1), ("company_code", 1)])
     assignment_details.create_index("assigned_user_email")
     assignment_details.create_index("severity")
-    
+
     # Review sessions indexes (workflow tracking)
     review_sessions = db["review_sessions"]
     review_sessions.create_index([("session_id", 1)], unique=True)
     review_sessions.create_index("period")
     review_sessions.create_index("created_by")
     review_sessions.create_index([("start_date", -1)])
-    
+
     # User feedback indexes (observations and suggestions)
     user_feedback = db["user_feedback"]
     user_feedback.create_index("gl_code")
     user_feedback.create_index("observation_type")
     user_feedback.create_index("status")
     user_feedback.create_index([("created_at", -1)])
-    
+
     # Query library indexes (standardized queries)
     query_library = db["query_library"]
     query_library.create_index([("query_type", 1), ("account_code", 1)])
     query_library.create_index("nature")
     query_library.create_index("is_active")
     query_library.create_index([("usage_count", -1)])  # Most used queries first
-    
+
     print("✅ MongoDB collections and indexes created successfully")
     print("   - 8 collections initialized:")
     print("     • supporting_docs (file metadata)")
@@ -123,31 +123,28 @@ def init_mongo_collections():
 
 
 def add_supporting_document(
-    gl_code: str,
-    period: str,
-    file_name: str,
-    file_path: str,
-    uploaded_by: str,
-    entity: str
+    gl_code: str, period: str, file_name: str, file_path: str, uploaded_by: str, entity: str
 ) -> str:
     """Add a supporting document metadata."""
     collection = get_supporting_docs_collection()
-    
+
     doc = {
         "gl_code": gl_code,
         "period": period,
         "entity": entity,
-        "files": [{
-            "name": file_name,
-            "path": file_path,
-            "uploaded_by": uploaded_by,
-            "uploaded_at": datetime.utcnow()
-        }],
+        "files": [
+            {
+                "name": file_name,
+                "path": file_path,
+                "uploaded_by": uploaded_by,
+                "uploaded_at": datetime.utcnow(),
+            }
+        ],
         "comments": [],
         "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "updated_at": datetime.utcnow(),
     }
-    
+
     result = collection.insert_one(doc)
     return str(result.inserted_id)
 
@@ -155,7 +152,7 @@ def add_supporting_document(
 def add_file_to_gl(gl_code: str, period: str, file_name: str, file_path: str, uploaded_by: str):
     """Add a file to existing GL document metadata."""
     collection = get_supporting_docs_collection()
-    
+
     collection.update_one(
         {"gl_code": gl_code, "period": period},
         {
@@ -164,19 +161,19 @@ def add_file_to_gl(gl_code: str, period: str, file_name: str, file_path: str, up
                     "name": file_name,
                     "path": file_path,
                     "uploaded_by": uploaded_by,
-                    "uploaded_at": datetime.utcnow()
+                    "uploaded_at": datetime.utcnow(),
                 }
             },
-            "$set": {"updated_at": datetime.utcnow()}
+            "$set": {"updated_at": datetime.utcnow()},
         },
-        upsert=True
+        upsert=True,
     )
 
 
 def add_comment(gl_code: str, period: str, user: str, text: str):
     """Add a comment to a GL account."""
     collection = get_supporting_docs_collection()
-    
+
     collection.update_one(
         {"gl_code": gl_code, "period": period},
         {
@@ -185,19 +182,16 @@ def add_comment(gl_code: str, period: str, user: str, text: str):
                     "user": user,
                     "text": text,
                     "timestamp": datetime.utcnow(),
-                    "replies": []
+                    "replies": [],
                 }
             },
-            "$set": {"updated_at": datetime.utcnow()}
-        }
+            "$set": {"updated_at": datetime.utcnow()},
+        },
     )
 
 
 def log_gl_audit_event(
-    gl_code: str,
-    action: str,
-    actor: Dict[str, str],
-    details: Optional[Dict[str, Any]] = None
+    gl_code: str, action: str, actor: dict[str, str], details: dict[str, Any] | None = None
 ):
     """Log an audit event scoped to a specific GL code.
 
@@ -206,74 +200,59 @@ def log_gl_audit_event(
     with GL-scoped audit trails.
     """
     collection = get_audit_trail_collection()
-    
+
     event = {
         "gl_code": gl_code,
         "action": action,
         "actor": actor,
         "details": details or {},
-        "timestamp": datetime.utcnow()
+        "timestamp": datetime.utcnow(),
     }
-    
+
     collection.insert_one(event)
 
 
-def get_audit_trail(gl_code: str, limit: int = 100) -> List[Dict]:
+def get_audit_trail(gl_code: str, limit: int = 100) -> list[dict]:
     """Get audit trail for a GL account."""
     collection = get_audit_trail_collection()
-    
-    return list(
-        collection.find({"gl_code": gl_code})
-        .sort("timestamp", -1)
-        .limit(limit)
-    )
+
+    return list(collection.find({"gl_code": gl_code}).sort("timestamp", -1).limit(limit))
 
 
 def save_validation_results(
-    gl_code: str,
-    period: str,
-    validation_suite: str,
-    results: Dict[str, Any],
-    passed: bool
+    gl_code: str, period: str, validation_suite: str, results: dict[str, Any], passed: bool
 ):
     """Save validation results."""
     collection = get_validation_results_collection()
-    
+
     doc = {
         "gl_code": gl_code,
         "period": period,
         "validation_suite": validation_suite,
         "results": results,
         "passed": passed,
-        "validated_at": datetime.utcnow()
+        "validated_at": datetime.utcnow(),
     }
-    
+
     collection.insert_one(doc)
 
 
-def get_validation_results(gl_code: str, period: str) -> List[Dict]:
+def get_validation_results(gl_code: str, period: str) -> list[dict]:
     """Get validation results for a GL account."""
     collection = get_validation_results_collection()
-    
-    return list(
-        collection.find({"gl_code": gl_code, "period": period})
-        .sort("validated_at", -1)
-    )
+
+    return list(collection.find({"gl_code": gl_code, "period": period}).sort("validated_at", -1))
 
 
 # ============================================================================
 # GL Metadata Operations (Extended GL Account Information)
 # ============================================================================
 
-def save_gl_metadata(
-    gl_code: str,
-    company_code: str,
-    period: str,
-    metadata: Dict[str, Any]
-) -> str:
+
+def save_gl_metadata(gl_code: str, company_code: str, period: str, metadata: dict[str, Any]) -> str:
     """Save extended metadata for a GL account."""
     collection = get_gl_metadata_collection()
-    
+
     doc = {
         "gl_code": gl_code,
         "company_code": company_code,
@@ -288,18 +267,18 @@ def save_gl_metadata(
         "supporting_schedule_refs": metadata.get("supporting_schedule_refs", []),
         "tags": metadata.get("tags", []),
         "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "updated_at": datetime.utcnow(),
     }
-    
+
     result = collection.update_one(
         {"gl_code": gl_code, "company_code": company_code, "period": period},
         {"$set": doc},
-        upsert=True
+        upsert=True,
     )
     return str(result.upserted_id) if result.upserted_id else "updated"
 
 
-def get_gl_metadata(gl_code: str, company_code: str, period: str) -> Optional[Dict]:
+def get_gl_metadata(gl_code: str, company_code: str, period: str) -> dict | None:
     """Get metadata for a specific GL account."""
     collection = get_gl_metadata_collection()
     return collection.find_one({"gl_code": gl_code, "company_code": company_code, "period": period})
@@ -308,19 +287,15 @@ def get_gl_metadata(gl_code: str, company_code: str, period: str) -> Optional[Di
 def add_review_note_to_gl(gl_code: str, company_code: str, period: str, note: str, added_by: str):
     """Add a review note to GL metadata."""
     collection = get_gl_metadata_collection()
-    
+
     collection.update_one(
         {"gl_code": gl_code, "company_code": company_code, "period": period},
         {
             "$push": {
-                "review_notes": {
-                    "note": note,
-                    "added_by": added_by,
-                    "timestamp": datetime.utcnow()
-                }
+                "review_notes": {"note": note, "added_by": added_by, "timestamp": datetime.utcnow()}
             },
-            "$set": {"updated_at": datetime.utcnow()}
-        }
+            "$set": {"updated_at": datetime.utcnow()},
+        },
     )
 
 
@@ -328,15 +303,13 @@ def add_review_note_to_gl(gl_code: str, company_code: str, period: str, note: st
 # Assignment Details Operations (Responsibility Matrix Metadata)
 # ============================================================================
 
+
 def save_assignment_details(
-    assignment_id: str,
-    gl_code: str,
-    company_code: str,
-    details: Dict[str, Any]
+    assignment_id: str, gl_code: str, company_code: str, details: dict[str, Any]
 ) -> str:
     """Save detailed assignment metadata."""
     collection = get_assignment_details_collection()
-    
+
     doc = {
         "assignment_id": assignment_id,
         "gl_code": gl_code,
@@ -353,18 +326,14 @@ def save_assignment_details(
         "attachments": details.get("attachments", []),
         "escalations": details.get("escalations", []),
         "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "updated_at": datetime.utcnow(),
     }
-    
-    result = collection.update_one(
-        {"assignment_id": assignment_id},
-        {"$set": doc},
-        upsert=True
-    )
+
+    result = collection.update_one({"assignment_id": assignment_id}, {"$set": doc}, upsert=True)
     return str(result.upserted_id) if result.upserted_id else "updated"
 
 
-def get_assignment_details(assignment_id: str) -> Optional[Dict]:
+def get_assignment_details(assignment_id: str) -> dict | None:
     """Get detailed assignment information."""
     collection = get_assignment_details_collection()
     return collection.find_one({"assignment_id": assignment_id})
@@ -373,7 +342,7 @@ def get_assignment_details(assignment_id: str) -> Optional[Dict]:
 def add_communication_to_assignment(assignment_id: str, message: str, from_user: str, to_user: str):
     """Add communication entry to assignment log."""
     collection = get_assignment_details_collection()
-    
+
     collection.update_one(
         {"assignment_id": assignment_id},
         {
@@ -382,11 +351,11 @@ def add_communication_to_assignment(assignment_id: str, message: str, from_user:
                     "message": message,
                     "from_user": from_user,
                     "to_user": to_user,
-                    "timestamp": datetime.utcnow()
+                    "timestamp": datetime.utcnow(),
                 }
             },
-            "$set": {"updated_at": datetime.utcnow()}
-        }
+            "$set": {"updated_at": datetime.utcnow()},
+        },
     )
 
 
@@ -394,15 +363,13 @@ def add_communication_to_assignment(assignment_id: str, message: str, from_user:
 # Review Sessions Operations (Workflow Tracking)
 # ============================================================================
 
+
 def create_review_session(
-    session_id: str,
-    period: str,
-    created_by: str,
-    session_data: Dict[str, Any]
+    session_id: str, period: str, created_by: str, session_data: dict[str, Any]
 ) -> str:
     """Create a new review session."""
     collection = get_review_sessions_collection()
-    
+
     doc = {
         "session_id": session_id,
         "period": period,
@@ -416,14 +383,14 @@ def create_review_session(
         "overall_progress": session_data.get("overall_progress", 0),
         "blockers": session_data.get("blockers", []),
         "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "updated_at": datetime.utcnow(),
     }
-    
+
     result = collection.insert_one(doc)
     return str(result.inserted_id)
 
 
-def get_review_session(session_id: str) -> Optional[Dict]:
+def get_review_session(session_id: str) -> dict | None:
     """Get review session by ID."""
     collection = get_review_sessions_collection()
     return collection.find_one({"session_id": session_id})
@@ -432,32 +399,24 @@ def get_review_session(session_id: str) -> Optional[Dict]:
 def update_review_session_progress(session_id: str, progress: int, checkpoint: str):
     """Update review session progress."""
     collection = get_review_sessions_collection()
-    
+
     collection.update_one(
         {"session_id": session_id},
         {
-            "$set": {
-                "overall_progress": progress,
-                "updated_at": datetime.utcnow()
-            },
-            "$push": {
-                "checkpoints": {
-                    "name": checkpoint,
-                    "completed_at": datetime.utcnow()
-                }
-            }
-        }
+            "$set": {"overall_progress": progress, "updated_at": datetime.utcnow()},
+            "$push": {"checkpoints": {"name": checkpoint, "completed_at": datetime.utcnow()}},
+        },
     )
 
 
-def get_active_review_sessions(period: Optional[str] = None) -> List[Dict]:
+def get_active_review_sessions(period: str | None = None) -> list[dict]:
     """Get all active review sessions."""
     collection = get_review_sessions_collection()
-    
+
     query = {"status": {"$in": ["not_started", "in_progress"]}}
     if period:
         query["period"] = period
-    
+
     return list(collection.find(query).sort("start_date", -1))
 
 
@@ -465,16 +424,17 @@ def get_active_review_sessions(period: Optional[str] = None) -> List[Dict]:
 # User Feedback Operations (Observations and Suggestions)
 # ============================================================================
 
+
 def save_user_feedback(
-    gl_code: Optional[str],
+    gl_code: str | None,
     observation_type: str,
     feedback_text: str,
     submitted_by: str,
-    additional_data: Optional[Dict[str, Any]] = None
+    additional_data: dict[str, Any] | None = None,
 ) -> str:
     """Save user feedback or observation."""
     collection = get_user_feedback_collection()
-    
+
     doc = {
         "gl_code": gl_code,
         "observation_type": observation_type,  # query, reclassification, observation, suggestion
@@ -489,35 +449,36 @@ def save_user_feedback(
         "upvotes": 0,
         "tags": additional_data.get("tags", []) if additional_data else [],
         "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "updated_at": datetime.utcnow(),
     }
-    
+
     result = collection.insert_one(doc)
     return str(result.inserted_id)
 
 
-def get_feedback_by_gl(gl_code: str) -> List[Dict]:
+def get_feedback_by_gl(gl_code: str) -> list[dict]:
     """Get all feedback for a specific GL account."""
     collection = get_user_feedback_collection()
     return list(collection.find({"gl_code": gl_code}).sort("created_at", -1))
 
 
-def get_open_feedback(observation_type: Optional[str] = None) -> List[Dict]:
+def get_open_feedback(observation_type: str | None = None) -> list[dict]:
     """Get all open feedback items."""
     collection = get_user_feedback_collection()
-    
+
     query = {"status": "open"}
     if observation_type:
         query["observation_type"] = observation_type
-    
+
     return list(collection.find(query).sort("created_at", -1))
 
 
 def resolve_feedback(feedback_id: str, resolution: str, resolved_by: str):
     """Mark feedback as resolved."""
     from bson import ObjectId
+
     collection = get_user_feedback_collection()
-    
+
     collection.update_one(
         {"_id": ObjectId(feedback_id)},
         {
@@ -526,9 +487,9 @@ def resolve_feedback(feedback_id: str, resolution: str, resolved_by: str):
                 "resolution": resolution,
                 "resolved_by": resolved_by,
                 "resolved_at": datetime.utcnow(),
-                "updated_at": datetime.utcnow()
+                "updated_at": datetime.utcnow(),
             }
-        }
+        },
     )
 
 
@@ -536,14 +497,11 @@ def resolve_feedback(feedback_id: str, resolution: str, resolved_by: str):
 # Query Library Operations (Standardized Query Templates)
 # ============================================================================
 
-def save_query_template(
-    query_type: str,
-    account_code: str,
-    template_data: Dict[str, Any]
-) -> str:
+
+def save_query_template(query_type: str, account_code: str, template_data: dict[str, Any]) -> str:
     """Save a standardized query template."""
     collection = get_query_library_collection()
-    
+
     doc = {
         "query_type": query_type,
         "account_code": account_code,
@@ -559,60 +517,52 @@ def save_query_template(
         "usage_count": 0,
         "last_used": None,
         "created_at": datetime.utcnow(),
-        "updated_at": datetime.utcnow()
+        "updated_at": datetime.utcnow(),
     }
-    
+
     result = collection.update_one(
-        {"query_type": query_type, "account_code": account_code},
-        {"$set": doc},
-        upsert=True
+        {"query_type": query_type, "account_code": account_code}, {"$set": doc}, upsert=True
     )
     return str(result.upserted_id) if result.upserted_id else "updated"
 
 
-def get_query_template(query_type: str, account_code: str) -> Optional[Dict]:
+def get_query_template(query_type: str, account_code: str) -> dict | None:
     """Get query template for specific account and query type."""
     collection = get_query_library_collection()
-    
+
     # Increment usage counter
     collection.update_one(
         {"query_type": query_type, "account_code": account_code},
-        {
-            "$inc": {"usage_count": 1},
-            "$set": {"last_used": datetime.utcnow()}
-        }
+        {"$inc": {"usage_count": 1}, "$set": {"last_used": datetime.utcnow()}},
     )
-    
+
     return collection.find_one({"query_type": query_type, "account_code": account_code})
 
 
-def get_templates_by_nature(nature: str) -> List[Dict]:
+def get_templates_by_nature(nature: str) -> list[dict]:
     """Get all templates for a specific nature classification."""
     collection = get_query_library_collection()
     return list(collection.find({"nature": nature, "is_active": True}))
 
 
-def get_most_used_templates(limit: int = 20) -> List[Dict]:
+def get_most_used_templates(limit: int = 20) -> list[dict]:
     """Get most frequently used query templates."""
     collection = get_query_library_collection()
-    return list(
-        collection.find({"is_active": True})
-        .sort("usage_count", -1)
-        .limit(limit)
-    )
+    return list(collection.find({"is_active": True}).sort("usage_count", -1).limit(limit))
 
 
 # ============================================================================
 # Data Ingestion Support Functions
 # ============================================================================
 
+
 def save_ingestion_metadata(
     entity: str,
     period: str,
-    profile: Dict[str, Any],
+    profile: dict[str, Any],
     fingerprint: str,
-    ingestion_result: Dict[str, Any],
-    validation: Optional[Dict[str, Any]] = None
+    ingestion_result: dict[str, Any],
+    validation: dict[str, Any] | None = None,
 ) -> str:
     """
     Save ingestion-level metadata in a dedicated collection to avoid conflicts
@@ -647,34 +597,31 @@ def save_ingestion_metadata(
 
 
 def log_audit_event(
-    event_type: str,
-    entity: str = None,
-    period: str = None,
-    **metadata
+    event_type: str, entity: str | None = None, period: str | None = None, **metadata
 ) -> str:
     """
     Log audit event to MongoDB
-    
+
     Args:
         event_type: Event taxonomy type
         entity: Entity code
         period: Period
         **metadata: Additional metadata
-        
+
     Returns:
         Inserted document ID
     """
     db = get_mongo_database()
     collection = db.audit_trail
-    
+
     document = {
         "event_type": event_type,
         "entity": entity,
         "period": period,
         "timestamp": datetime.utcnow(),
-        "metadata": metadata
+        "metadata": metadata,
     }
-    
+
     result = collection.insert_one(document)
-    
+
     return str(result.inserted_id)

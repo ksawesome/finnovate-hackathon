@@ -11,7 +11,7 @@ An AI-powered agent for end-to-end financial statement review and validation.
 Finance teams across the Adani Group manage 1,000+ legal entities with extensive manual work in reviewing financial statements. Project Aura automates this process using AI agents that:
 
 - ✅ Collect & consolidate data from multiple sources
-- ✅ Validate GL accounts with Great Expectations  
+- ✅ Validate GL accounts with Great Expectations
 - ✅ Generate automated reports with insights
 - ✅ Provide interactive dashboards & conversational AI
 - ✅ Learn from feedback to improve accuracy
@@ -162,6 +162,23 @@ finnovate-hackathon/
 
 ## 🧪 Development
 
+### Pre-commit hooks
+
+First-time setup (one-time):
+
+```powershell
+pip install pre-commit
+pre-commit install
+```
+
+Run on all files:
+
+```powershell
+pre-commit run --all-files
+```
+
+This runs formatting (black/isort), linting (ruff), type checks (mypy), fast tests, and basic security/secrets scans before commits and on CI.
+
 ### Run Tests
 
 ```powershell
@@ -185,6 +202,29 @@ make format
 ```powershell
 make type-check
 ```
+
+---
+
+## 🔁 CI/CD
+
+We use GitHub Actions with a multi-job pipeline:
+
+- Pre-commit (runs full pre-commit on PRs)
+- Lint & Type Check (ruff, black --check, isort --check-only, mypy --strict)
+- Tests (pytest with coverage artifacts)
+- Security (bandit, pip-audit)
+- CodeQL (static analysis, scheduled weekly)
+
+Release builds (Docker image) publish to GHCR on version tags `vX.Y.Z`.
+
+Create a release:
+
+```powershell
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+Image will be available at `ghcr.io/<owner>/<repo>/aura:<tag>`.
 
 ---
 

@@ -14,7 +14,7 @@ def create_dashboard_charts(df: pd.DataFrame) -> list:
     Returns:
         list: List of Plotly figures.
     """
-    fig1 = px.bar(df, x='account', y='balance')
+    fig1 = px.bar(df, x="account", y="balance")
     return [fig1]
 
 
@@ -26,4 +26,3 @@ def plot_insights(df: pd.DataFrame):
         df: DataFrame.
     """
     # Placeholder
-    pass

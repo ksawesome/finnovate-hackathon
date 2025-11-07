@@ -1,21 +1,68 @@
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.6.8
+    rev: v0.6.4
     hooks:
       - id: ruff
-        args: [--fix]
+        args: ["--fix"]
+        exclude: "^(agent_temp|scripts)/"
       - id: ruff-format
+        exclude: "^(agent_temp|scripts)/"
   - repo: https://github.com/psf/black
     rev: 24.10.0
     hooks:
       - id: black
+        language_version: python3.11
+        exclude: "^agent_temp/"
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.2
     hooks:
       - id: isort
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
+        exclude: "^agent_temp/"
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.1
     hooks:
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
-      - id: mixed-line-ending
+      - id: mypy
+        additional_dependencies: ["types-PyYAML"]
+        args: ["--strict", "--ignore-missing-imports", "src"]
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".detect-secrets.baseline"]
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.3
+    hooks:
+      - id: gitleaks
+        stages: ["pre-push"]
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v3.24.0
+    hooks:
+      - id: commitizen
+        stages: ["commit-msg"]
+        additional_dependencies: ["commitizen"]
+  - repo: local
+    hooks:
+      - id: bandit
+        name: bandit security scan
+        entry: bandit -q -r src
+        language: system
+        pass_filenames: false
+        stages: ["pre-push"]
+      - id: pytest-fast
+        name: pytest (fast changed-only)
+        entry: bash -c "pytest -q"
+        language: system
+        pass_filenames: false
+        stages: ["pre-commit"]
+        files: "^(src|tests)/"

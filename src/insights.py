@@ -15,7 +15,7 @@ def generate_insights(df: pd.DataFrame) -> list:
     """
     insights = []
     # Placeholder logic
-    total_balance = df.get('balance', pd.Series()).sum()
+    total_balance = df.get("balance", pd.Series()).sum()
     insights.append(f"Total balance: {total_balance}")
     return insights
 

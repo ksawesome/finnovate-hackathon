@@ -30,20 +30,21 @@ Features:
 """
 
 from __future__ import annotations
-import os
+
 import json
 import logging
-from typing import Optional, Tuple, Dict, Any
+import os
+from typing import Any
 
+import joblib
 import numpy as np
 import pandas as pd
+from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.compose import ColumnTransformer
-import joblib
 
 # Optional imports
 try:
@@ -84,7 +85,7 @@ def _ensure_model_dir(path: str = MODEL_DIR):
     return path
 
 
-def _build_pipeline(numeric_features: Optional[list] = None):
+def _build_pipeline(numeric_features: list | None = None):
     """
     Build a pipeline that scales numeric features and then applies a classifier.
     The pipeline returns a sklearn-like object with fit/predict methods.
@@ -127,7 +128,7 @@ def _choose_model(**kwargs):
     return model
 
 
-def _evaluate_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float]:
+def _evaluate_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, float]:
     return {
         "accuracy": float(accuracy_score(y_true, y_pred)),
         "f1": float(f1_score(y_true, y_pred, average="weighted", zero_division=0)),
@@ -136,14 +137,14 @@ def _evaluate_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Dict[str, float
     }
 
 
-def save_model(pipeline: Pipeline, path: Optional[str] = None) -> str:
+def save_model(pipeline: Pipeline, path: str | None = None) -> str:
     path = path or os.path.join(_ensure_model_dir(), DEFAULT_MODEL_FILENAME)
     joblib.dump(pipeline, path)
     logger.info("Saved model to %s", path)
     return path
 
 
-def load_model(path: Optional[str] = None) -> Pipeline:
+def load_model(path: str | None = None) -> Pipeline:
     path = path or os.path.join(_ensure_model_dir(), DEFAULT_MODEL_FILENAME)
     if not os.path.exists(path):
         raise FileNotFoundError(f"Model file not found at {path}")
@@ -155,13 +156,13 @@ def train(
     df: pd.DataFrame,
     feature_cols: list,
     target_col: str,
-    numeric_features: Optional[list] = None,
+    numeric_features: list | None = None,
     test_size: float = 0.2,
     random_state: int = 42,
-    model_kwargs: Optional[Dict[str, Any]] = None,
-    experiment_name: Optional[str] = None,
-    save_path: Optional[str] = None,
-) -> Dict[str, Any]:
+    model_kwargs: dict[str, Any] | None = None,
+    experiment_name: str | None = None,
+    save_path: str | None = None,
+) -> dict[str, Any]:
     """
     Train model with MLflow logging.
     Returns a dict with model, metrics, run_id, model_path.
@@ -209,7 +210,7 @@ def train(
             try:
                 if hasattr(pipeline.named_steps["clf"], "feature_importances_"):
                     fi = pipeline.named_steps["clf"].feature_importances_
-                    fi_out = {c: float(val) for c, val in zip(feature_cols, fi[: len(feature_cols)])}
+                    fi_out = {c: float(val) for c, val in zip(feature_cols, fi[: len(feature_cols)], strict=False)}
                     with open(os.path.join(_ensure_model_dir(), "feature_importance.json"), "w") as fh:
                         json.dump(fi_out, fh)
                     mlflow.log_artifact(os.path.join(_ensure_model_dir(), "feature_importance.json"))
@@ -228,7 +229,7 @@ def train(
             raise
 
 
-def predict(df: pd.DataFrame, feature_cols: list, model: Optional[Pipeline] = None) -> pd.DataFrame:
+def predict(df: pd.DataFrame, feature_cols: list, model: Pipeline | None = None) -> pd.DataFrame:
     """
     Predict categories for dataframe and append columns: predicted, prob_{class} (if predict_proba available).
     Returns copy of dataframe with added columns.
@@ -249,7 +250,7 @@ def predict(df: pd.DataFrame, feature_cols: list, model: Optional[Pipeline] = No
     return df
 
 
-def evaluate(df: pd.DataFrame, feature_cols: list, target_col: str, model: Optional[Pipeline] = None) -> Dict[str, Any]:
+def evaluate(df: pd.DataFrame, feature_cols: list, target_col: str, model: Pipeline | None = None) -> dict[str, Any]:
     pipeline = model or load_model()
     X = df[feature_cols]
     y = df[target_col].astype(str)
@@ -287,11 +288,11 @@ def retrain_with_feedback(
     feedback_df: pd.DataFrame,
     feature_cols: list,
     target_col: str,
-    numeric_features: Optional[list] = None,
+    numeric_features: list | None = None,
     monitor_metric: str = ROLLBACK_METRIC,
     min_improvement: float = MIN_IMPROVEMENT,
     random_state: int = 42,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Retrain model by merging base dataset with feedback, train a new model,
     compare against currently deployed model, and rollback if regression detected.
@@ -363,7 +364,7 @@ def retrain_with_feedback(
         return {"action": "rolled_back", "new_metrics": new_scores, "curr_metrics": curr_scores}
 
 
-def explain_instance(instance: pd.Series, feature_cols: list, model: Optional[Pipeline] = None) -> Dict[str, Any]:
+def explain_instance(instance: pd.Series, feature_cols: list, model: Pipeline | None = None) -> dict[str, Any]:
     """
     Explain a single prediction with SHAP if available. Returns a dict with base_value and feature contributions.
     """

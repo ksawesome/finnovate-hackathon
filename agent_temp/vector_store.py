@@ -20,14 +20,13 @@ Usage:
     from src.vector_store import get_retriever, refresh_vector_store
 """
 
-import os
 import logging
-from typing import Optional
+import os
 
-from langchain.vectorstores import Chroma
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.document_loaders import DirectoryLoader, PyPDFLoader, TextLoader
+from langchain.document_loaders import PyPDFLoader, TextLoader
 from langchain.embeddings import HuggingFaceEmbeddings, OpenAIEmbeddings
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import Chroma
 
 logger = logging.getLogger("aura.vectorstore")
 logger.setLevel(logging.INFO)
@@ -93,8 +92,8 @@ def _load_documents(doc_dir: str):
 
 
 def refresh_vector_store(
-    doc_dir: Optional[str] = None,
-    persist_dir: Optional[str] = None,
+    doc_dir: str | None = None,
+    persist_dir: str | None = None,
     chunk_size: int = 800,
     chunk_overlap: int = 150
 ):
@@ -120,7 +119,7 @@ def refresh_vector_store(
     return vectordb
 
 
-def get_vector_store(persist_dir: Optional[str] = None):
+def get_vector_store(persist_dir: str | None = None):
     """
     Load an existing Chroma vector store from disk (without rebuilding).
     """
@@ -133,7 +132,7 @@ def get_vector_store(persist_dir: Optional[str] = None):
     return vectordb
 
 
-def get_retriever(persist_dir: Optional[str] = None, search_k: int = 4):
+def get_retriever(persist_dir: str | None = None, search_k: int = 4):
     """
     Return a retriever object for similarity search.
     """
@@ -142,7 +141,7 @@ def get_retriever(persist_dir: Optional[str] = None, search_k: int = 4):
     return retriever
 
 
-def query_knowledgebase(query: str, persist_dir: Optional[str] = None, top_k: int = 3):
+def query_knowledgebase(query: str, persist_dir: str | None = None, top_k: int = 3):
     """
     Convenience wrapper: query stored embeddings and return top chunks.
     """

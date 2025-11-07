@@ -1,4 +1,5 @@
 """Test IngestionOrchestrator"""
+
 import sys
 from pathlib import Path
 
@@ -15,11 +16,11 @@ result = orchestrator.ingest_file(
     file_path="data/sample/trial_balance_cleaned.csv",
     entity="ABEX",
     period="2022-06",
-    skip_duplicates=False
+    skip_duplicates=False,
 )
 
 print(f"\nStatus: {result['status']}")
-if result['status'] == 'success':
+if result["status"] == "success":
     print(f"✅ Duration: {result['duration_seconds']:.2f} seconds")
     print(f"✅ Inserted: {result['inserted']}")
     print(f"✅ Updated: {result['updated']}")

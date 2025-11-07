@@ -8,7 +8,7 @@ Phase 1 Part 2 enhancements:
 
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 import great_expectations as gx
 import pandas as pd
@@ -32,36 +32,36 @@ def validate_data(df, suite_name: str = "trial_balance_suite") -> dict:
     """
     context = gx.get_context()
     validator = context.sources.pandas_default.read_dataframe(df)
-    suite = context.get_expectation_suite(suite_name)
+    context.get_expectation_suite(suite_name)
     results = validator.validate()
-    
+
     # Extract metadata for storage
-    gl_code = df['account_code'].iloc[0] if len(df) > 0 else "unknown"
-    period = df['period'].iloc[0] if len(df) > 0 else "unknown"
+    gl_code = df["account_code"].iloc[0] if len(df) > 0 else "unknown"
+    period = df["period"].iloc[0] if len(df) > 0 else "unknown"
     passed = results.success
-    
+
     # Save full results to MongoDB
     save_validation_results(
         gl_code=gl_code,
         period=period,
         validation_suite=suite_name,
         results=results.to_json_dict(),
-        passed=passed
+        passed=passed,
     )
-    
+
     # Log audit event
     # GL-scoped audit trail
     log_gl_audit_event(
         gl_code=gl_code,
         action="validated",
         actor={"source": "gx_validator"},
-        details={"suite": suite_name, "passed": passed}
+        details={"suite": suite_name, "passed": passed},
     )
-    
+
     return results.to_json_dict()
 
 
-def _get_approved_entities() -> List[str]:
+def _get_approved_entities() -> list[str]:
     """Fetch approved entities dynamically from database.
 
     Fallback to commonly used Adani entities if DB query fails.
@@ -70,18 +70,26 @@ def _get_approved_entities() -> List[str]:
         session = get_postgres_session()
         try:
             entities = (
-                session.execute(text("SELECT DISTINCT entity FROM gl_accounts"))
-                .scalars()
-                .all()
+                session.execute(text("SELECT DISTINCT entity FROM gl_accounts")).scalars().all()
             )
             if entities:
-                return sorted(set([e for e in entities if e]))
+                return sorted({e for e in entities if e})
         finally:
             session.close()
     except Exception:
         # Fallback list
         return [
-            "ABEX", "AGEL", "APL", "AEML", "ATL", "APSEZ", "ATGL", "AWL", "AEL", "APML", "ARTL",
+            "ABEX",
+            "AGEL",
+            "APL",
+            "AEML",
+            "ATL",
+            "APSEZ",
+            "ATGL",
+            "AWL",
+            "AEL",
+            "APML",
+            "ARTL",
         ]
 
 
@@ -105,16 +113,18 @@ def create_expectation_suite(df, suite_name: str) -> ExpectationSuite:
     except Exception:
         suite = ExpectationSuite(expectation_suite_name=suite_name)
         context.add_or_update_expectation_suite(expectation_suite=suite)
-    
+
     # 1) Trial balance must sum to near-zero (debits = credits)
     validator.expect_column_sum_to_be_between(
-        "balance", min_value=-1, max_value=1,
+        "balance",
+        min_value=-1,
+        max_value=1,
         meta={
             "remediation": "Ensure total debits equal total credits; verify any rounding or missing entries.",
             "severity": "critical",
         },
     )
-    
+
     # Required columns must exist
     validator.expect_table_columns_to_match_ordered_list(
         ["account_code", "account_name", "balance", "entity", "period"],
@@ -123,7 +133,7 @@ def create_expectation_suite(df, suite_name: str) -> ExpectationSuite:
             "severity": "critical",
         },
     )
-    
+
     # No null values in critical columns
     validator.expect_column_values_to_not_be_null(
         "account_code",
@@ -139,10 +149,11 @@ def create_expectation_suite(df, suite_name: str) -> ExpectationSuite:
             "severity": "high",
         },
     )
-    
+
     # Balance should be numeric
     validator.expect_column_values_to_be_of_type(
-        "balance", "float64",
+        "balance",
+        "float64",
         meta={
             "remediation": "Balance must be numeric (float). Coerce types in preprocessing.",
             "severity": "high",
@@ -237,7 +248,7 @@ def create_expectation_suite(df, suite_name: str) -> ExpectationSuite:
     validator.expect_column_values_to_be_between(
         column="balance",
         min_value=-1_000_000_000_000,  # -1T
-        max_value=1_000_000_000_000,   # 1T
+        max_value=1_000_000_000_000,  # 1T
         meta={
             "remediation": "Balance out of reasonable range; verify units and sign.",
             "severity": "high",
@@ -321,6 +332,7 @@ def add_custom_expectations(validator) -> None:
 
 # ---------- Orchestrator & Reporting (Task 2 scaffolding) ----------
 
+
 @dataclass
 class ValidationResult:
     entity: str
@@ -338,8 +350,8 @@ class ValidationResult:
     low_failures: int
     execution_time_seconds: float
     timestamp: str
-    failed_expectations: List[Dict[str, Any]]
-    warnings: List[str]
+    failed_expectations: list[dict[str, Any]]
+    warnings: list[str]
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -369,20 +381,24 @@ class ValidationOrchestrator:
         results = validator.validate(expectation_suite=suite)
 
         # Summarize results
-        failed_expectations: List[Dict[str, Any]] = []
+        failed_expectations: list[dict[str, Any]] = []
         sev_counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
         for res in getattr(results, "results", []) or []:
             if not res.success:  # type: ignore[attr-defined]
-                meta = (res.expectation_config.meta or {})  # type: ignore[attr-defined]
+                meta = res.expectation_config.meta or {}  # type: ignore[attr-defined]
                 severity = meta.get("severity", "medium")
                 sev_counts[severity] = sev_counts.get(severity, 0) + 1
                 failed_expectations.append(
                     {
-                        "expectation_type": getattr(res.expectation_config, "expectation_type", "unknown"),
+                        "expectation_type": getattr(
+                            res.expectation_config, "expectation_type", "unknown"
+                        ),
                         "column": (res.expectation_config.kwargs or {}).get("column"),  # type: ignore[attr-defined]
                         "severity": severity,
                         "remediation": meta.get("remediation", "Fix data and retry"),
-                        "unexpected_count": (getattr(res, "result", {}) or {}).get("unexpected_count", 0),
+                        "unexpected_count": (getattr(res, "result", {}) or {}).get(
+                            "unexpected_count", 0
+                        ),
                     }
                 )
 
@@ -437,14 +453,12 @@ class ValidationOrchestrator:
         )
 
         if fail_on_critical and vr.critical_failures:
-            raise ValueError(
-                f"Validation failed with {vr.critical_failures} critical errors."
-            )
+            raise ValueError(f"Validation failed with {vr.critical_failures} critical errors.")
 
         return vr
 
-    def validate_batch(self, files: List[Dict[str, Any]], fail_fast: bool = False):
-        results: Dict[str, Any] = {}
+    def validate_batch(self, files: list[dict[str, Any]], fail_fast: bool = False):
+        results: dict[str, Any] = {}
         for f in files:
             try:
                 df = pd.read_csv(f["file_path"])  # type: ignore[arg-type]
@@ -459,39 +473,41 @@ class ValidationOrchestrator:
                     raise
                 results[f["file_path"]] = {"error": str(e), **f}
         return results
-    
 
 
 def validate_period(period: str) -> dict:
     """
     Validate all GL accounts for a specific period.
-    
+
     Args:
         period: Period to validate (e.g., "2025-01").
-        
+
     Returns:
         dict: Validation summary.
     """
     import pandas as pd
-    
+
     # Load from PostgreSQL
     gl_accounts = get_gl_accounts_by_period(period)
-    
+
     if not gl_accounts:
         return {"error": f"No GL accounts found for period {period}"}
-    
+
     # Convert to DataFrame
-    data = [{
-        "account_code": acc.account_code,
-        "account_name": acc.account_name,
-        "balance": float(acc.balance),
-        "entity": acc.entity,
-        "period": acc.period
-    } for acc in gl_accounts]
-    
+    data = [
+        {
+            "account_code": acc.account_code,
+            "account_name": acc.account_name,
+            "balance": float(acc.balance),
+            "entity": acc.entity,
+            "period": acc.period,
+        }
+        for acc in gl_accounts
+    ]
+
     df = pd.DataFrame(data)
-    
+
     # Validate
     results = validate_data(df)
-    
+
     return results

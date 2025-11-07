@@ -11,8 +11,29 @@ line_length = 100
 
 [tool.ruff]
 line-length = 100
-extend-select = ["E", "F", "I", "B", "UP"]
-ignore = ["E203"]
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "PIE", # flake8-pie
+    "RUF", # Ruff-specific rules
+]
+ignore = [
+    "E203", # allow black-compatible slicing whitespace
+    "E501", # allow long lines (black formatter handles this)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = [
+    "E501", # allow long lines in tests
+]
 
 [tool.mypy]
 python_version = "3.11"
@@ -24,3 +45,9 @@ warn_unused_configs = true
 [tool.pytest.ini_options]
 addopts = "-q --maxfail=1 --disable-warnings"
 pythonpath = ["src"]
+
+[tool.commitizen]
+name = "cz_conventional_commits"
+version = "0.1.0"
+tag_format = "v$version"
+version_files = ["pyproject.toml:version"]

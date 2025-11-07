@@ -157,7 +157,7 @@ def test_validation_persists_to_mongo(monkeypatch):
 
     df = make_clean_df()
     orch = ValidationOrchestrator(suite_name="unit_suite_persist")
-    res = orch.validate_dataframe(df, entity="ABEX", period="2025-03", fail_on_critical=False)
+    orch.validate_dataframe(df, entity="ABEX", period="2025-03", fail_on_critical=False)
 
     assert calls, "save_validation_results was not called"
     last = calls[-1]

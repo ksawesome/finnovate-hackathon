@@ -1,18 +1,13 @@
 """Unit tests for data ingestion helpers."""
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import pandas as pd
 import pytest
 from pandas.api.types import is_float_dtype
 
-from src.data_ingestion import (
-    DataProfiler,
-    FileFingerprinter,
-    IngestionOrchestrator,
-    SchemaMapper,
-)
+from src.data_ingestion import DataProfiler, FileFingerprinter, IngestionOrchestrator, SchemaMapper
 
 
 @pytest.fixture
@@ -87,7 +82,7 @@ class TestFileFingerprinter:
             def __init__(self, should_match: bool) -> None:
                 self.should_match = should_match
 
-            def find_one(self, query: Dict[str, str]) -> Dict[str, str] | None:
+            def find_one(self, query: dict[str, str]) -> dict[str, str] | None:
                 return {"_id": "existing"} if self.should_match else None
 
         monkeypatch.setattr(
@@ -113,9 +108,11 @@ class TestIngestionOrchestrator:
         csv_file = tmp_path / "trial_balance.csv"
         balanced_trial_balance.to_csv(csv_file, index=False)
 
-        captured: Dict[str, Any] = {}
+        captured: dict[str, Any] = {}
 
-        def fake_bulk_create_gl_accounts(df: pd.DataFrame, entity: str, period: str) -> Dict[str, int]:
+        def fake_bulk_create_gl_accounts(
+            df: pd.DataFrame, entity: str, period: str
+        ) -> dict[str, int]:
             captured.setdefault("bulk_calls", []).append((entity, period, len(df)))
             return {"inserted": len(df), "updated": 0, "failed": 0}
 
@@ -133,7 +130,9 @@ class TestIngestionOrchestrator:
         monkeypatch.setattr("src.db.postgres.bulk_create_gl_accounts", fake_bulk_create_gl_accounts)
         monkeypatch.setattr("src.db.mongodb.save_ingestion_metadata", fake_save_ingestion_metadata)
         monkeypatch.setattr("src.db.mongodb.log_audit_event", fake_log_audit_event)
-        monkeypatch.setattr("src.data_ingestion.save_processed_parquet", fake_save_processed_parquet)
+        monkeypatch.setattr(
+            "src.data_ingestion.save_processed_parquet", fake_save_processed_parquet
+        )
 
         orchestrator = IngestionOrchestrator()
         result = orchestrator.ingest_file(

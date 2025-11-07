@@ -5,36 +5,33 @@ This script populates the tri-store architecture with test data matching
 the Trial Balance structure across all 12 sheets.
 """
 
-import sys
-from pathlib import Path
-from decimal import Decimal
-from datetime import datetime, timedelta
 import random
+import sys
+from datetime import datetime, timedelta
+from decimal import Decimal
+from pathlib import Path
 
 # Add src directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.db.postgres import (
-    init_db,
-    create_user,
-    create_gl_account,
-    create_responsibility_assignment,
-    create_master_account,
-    create_account_template,
-    create_version_snapshot,
-    log_review,
-    get_user_by_email
-)
 from src.db.mongodb import (
-    init_mongo_collections,
-    save_gl_metadata,
-    save_assignment_details,
     create_review_session,
-    save_user_feedback,
+    init_mongo_collections,
+    log_audit_event,
+    save_assignment_details,
+    save_gl_metadata,
     save_query_template,
-    log_audit_event
+    save_user_feedback,
 )
-
+from src.db.postgres import (
+    create_account_template,
+    create_gl_account,
+    create_master_account,
+    create_responsibility_assignment,
+    create_user,
+    get_user_by_email,
+    init_db,
+)
 
 # ============================================================================
 # Sample Data Definitions
@@ -45,32 +42,32 @@ SAMPLE_USERS = [
         "name": "Rajesh Kumar",
         "email": "rajesh.kumar@adani.com",
         "department": "Finance",
-        "role": "Senior Accountant"
+        "role": "Senior Accountant",
     },
     {
         "name": "Priya Sharma",
         "email": "priya.sharma@adani.com",
         "department": "Treasury",
-        "role": "Treasury Manager"
+        "role": "Treasury Manager",
     },
     {
         "name": "Amit Patel",
         "email": "amit.patel@adani.com",
         "department": "Accounts",
-        "role": "Accountant"
+        "role": "Accountant",
     },
     {
         "name": "Sneha Reddy",
         "email": "sneha.reddy@adani.com",
         "department": "Finance",
-        "role": "Financial Controller"
+        "role": "Financial Controller",
     },
     {
         "name": "Vikram Singh",
         "email": "vikram.singh@adani.com",
         "department": "Accounts",
-        "role": "Senior Accountant"
-    }
+        "role": "Senior Accountant",
+    },
 ]
 
 SAMPLE_GL_ACCOUNTS = [
@@ -96,7 +93,7 @@ SAMPLE_GL_ACCOUNTS = [
         "analysis_required": "Yes",
         "reconciliation_type": "Bank Reconciliation",
         "variance_pct": Decimal("2.5"),
-        "department": "Treasury"
+        "department": "Treasury",
     },
     {
         "account_code": "10020002",
@@ -120,7 +117,7 @@ SAMPLE_GL_ACCOUNTS = [
         "analysis_required": "Yes",
         "reconciliation_type": "Sub-ledger Reconciliation",
         "variance_pct": Decimal("5.2"),
-        "department": "Accounts"
+        "department": "Accounts",
     },
     {
         "account_code": "20030001",
@@ -144,7 +141,7 @@ SAMPLE_GL_ACCOUNTS = [
         "analysis_required": "Yes",
         "reconciliation_type": "Vendor Reconciliation",
         "variance_pct": Decimal("3.8"),
-        "department": "Accounts"
+        "department": "Accounts",
     },
     {
         "account_code": "40010001",
@@ -168,7 +165,7 @@ SAMPLE_GL_ACCOUNTS = [
         "analysis_required": "Yes",
         "reconciliation_type": "Revenue Reconciliation",
         "variance_pct": Decimal("8.5"),
-        "department": "Finance"
+        "department": "Finance",
     },
     {
         "account_code": "50020001",
@@ -192,8 +189,8 @@ SAMPLE_GL_ACCOUNTS = [
         "analysis_required": "No",
         "reconciliation_type": "Payroll Reconciliation",
         "variance_pct": Decimal("1.2"),
-        "department": "Finance"
-    }
+        "department": "Finance",
+    },
 ]
 
 SAMPLE_MASTER_ACCOUNTS = [
@@ -204,7 +201,7 @@ SAMPLE_MASTER_ACCOUNTS = [
         "schedule_number": "SCH-01",
         "tb_5500": Decimal("15000000.00"),
         "reclassification_mar_18": Decimal("0.00"),
-        "derived_tb_5500": Decimal("15000000.00")
+        "derived_tb_5500": Decimal("15000000.00"),
     },
     {
         "account_code": "10020002",
@@ -213,8 +210,8 @@ SAMPLE_MASTER_ACCOUNTS = [
         "schedule_number": "SCH-02",
         "tb_5500": Decimal("85000000.00"),
         "reclassification_mar_18": Decimal("-2000000.00"),
-        "derived_tb_5500": Decimal("83000000.00")
-    }
+        "derived_tb_5500": Decimal("83000000.00"),
+    },
 ]
 
 SAMPLE_QUERY_TEMPLATES = [
@@ -227,7 +224,7 @@ SAMPLE_QUERY_TEMPLATES = [
         "standard_response": "Bank statements attached. Reconciliation completed with minor timing differences.",
         "required_fields": ["bank_statement", "reconciliation_workpaper", "outstanding_items_list"],
         "validation_rules": ["bank_balance_matches_gl", "all_reconciling_items_explained"],
-        "department": "Treasury"
+        "department": "Treasury",
     },
     {
         "query_type": "Aging Analysis",
@@ -238,8 +235,8 @@ SAMPLE_QUERY_TEMPLATES = [
         "standard_response": "Aging analysis attached. ECL provision calculated as per Ind AS 109.",
         "required_fields": ["aging_report", "provision_calculation", "doubtful_debts_list"],
         "validation_rules": ["aging_total_matches_gl", "provision_adequacy_check"],
-        "department": "Accounts"
-    }
+        "department": "Accounts",
+    },
 ]
 
 OBSERVATION_DATA = [
@@ -249,7 +246,7 @@ OBSERVATION_DATA = [
         "feedback_text": "Customer XYZ Ltd has outstanding balance of 5Cr for >180 days. Need to verify status.",
         "submitted_by": "rajesh.kumar@adani.com",
         "priority": "high",
-        "category": "collection_risk"
+        "category": "collection_risk",
     },
     {
         "gl_code": None,
@@ -257,8 +254,8 @@ OBSERVATION_DATA = [
         "feedback_text": "Recommend automating bank reconciliation process to reduce manual effort.",
         "submitted_by": "priya.sharma@adani.com",
         "priority": "medium",
-        "category": "process_improvement"
-    }
+        "category": "process_improvement",
+    },
 ]
 
 
@@ -266,11 +263,12 @@ OBSERVATION_DATA = [
 # Seeding Functions
 # ============================================================================
 
+
 def seed_users():
     """Seed sample users."""
     print("\n📊 Seeding users...")
     created_users = []
-    
+
     for user_data in SAMPLE_USERS:
         try:
             # Check if user exists
@@ -284,7 +282,7 @@ def seed_users():
                 created_users.append(user)
         except Exception as e:
             print(f"   ❌ Error creating user {user_data['email']}: {e}")
-    
+
     return created_users
 
 
@@ -292,25 +290,25 @@ def seed_gl_accounts(users):
     """Seed sample GL accounts."""
     print("\n📊 Seeding GL accounts...")
     created_accounts = []
-    
+
     for i, gl_data in enumerate(SAMPLE_GL_ACCOUNTS):
         try:
             # Assign to user in round-robin fashion
             assigned_user = users[i % len(users)]
             gl_data["assigned_user_id"] = assigned_user.id
-            
+
             gl_account = create_gl_account(**gl_data)
             print(f"   ✅ Created GL: {gl_account.account_code} - {gl_account.account_name}")
             created_accounts.append(gl_account)
-            
+
             # Log audit event
             log_audit_event(
                 gl_code=gl_account.account_code,
                 action="account_created",
                 actor={"id": assigned_user.id, "email": assigned_user.email},
-                details={"balance": float(gl_account.balance), "period": gl_account.period}
+                details={"balance": float(gl_account.balance), "period": gl_account.period},
             )
-            
+
             # Create GL metadata in MongoDB
             save_gl_metadata(
                 gl_code=gl_account.account_code,
@@ -325,24 +323,24 @@ def seed_gl_accounts(users):
                     "historical_issues": [],
                     "reconciliation_details": {},
                     "supporting_schedule_refs": [f"SCH-{i+1:02d}"],
-                    "tags": ["sample", "mar-24", gl_account.department.lower()]
-                }
+                    "tags": ["sample", "mar-24", gl_account.department.lower()],
+                },
             )
-            
+
         except Exception as e:
             print(f"   ❌ Error creating GL account {gl_data['account_code']}: {e}")
-    
+
     return created_accounts
 
 
 def seed_responsibility_assignments(gl_accounts, users):
     """Seed responsibility matrix assignments."""
     print("\n📊 Seeding responsibility assignments...")
-    
+
     for i, gl_account in enumerate(gl_accounts):
         try:
             assigned_user = users[i % len(users)]
-            
+
             # Create basic assignment
             assignment = create_responsibility_assignment(
                 gl_code=gl_account.account_code,
@@ -359,11 +357,11 @@ def seed_responsibility_assignments(gl_accounts, users):
                 amount_lc=gl_account.balance,
                 query_type="Balance Confirmation",
                 working_needed="Yes" if gl_account.analysis_required == "Yes" else "No",
-                assignment_date=datetime.utcnow() - timedelta(days=random.randint(1, 10))
+                assignment_date=datetime.utcnow() - timedelta(days=random.randint(1, 10)),
             )
-            
+
             print(f"   ✅ Created assignment: {assignment.assignment_id} for {assigned_user.name}")
-            
+
             # Add detailed metadata in MongoDB
             save_assignment_details(
                 assignment_id=assignment.assignment_id,
@@ -382,26 +380,26 @@ def seed_responsibility_assignments(gl_accounts, users):
                             "message": "Assignment created",
                             "from_user": "system",
                             "to_user": assigned_user.email,
-                            "timestamp": datetime.utcnow() - timedelta(days=5)
+                            "timestamp": datetime.utcnow() - timedelta(days=5),
                         }
                     ],
                     "status_history": [
                         {
                             "status": "assigned",
                             "timestamp": datetime.utcnow() - timedelta(days=5),
-                            "changed_by": "system"
+                            "changed_by": "system",
                         },
                         {
                             "status": "in_progress",
                             "timestamp": datetime.utcnow() - timedelta(days=3),
-                            "changed_by": assigned_user.email
-                        }
+                            "changed_by": assigned_user.email,
+                        },
                     ],
                     "attachments": [],
-                    "escalations": []
-                }
+                    "escalations": [],
+                },
             )
-            
+
         except Exception as e:
             print(f"   ❌ Error creating assignment for {gl_account.account_code}: {e}")
 
@@ -409,7 +407,7 @@ def seed_responsibility_assignments(gl_accounts, users):
 def seed_master_accounts():
     """Seed master chart of accounts."""
     print("\n📊 Seeding master chart of accounts...")
-    
+
     for master_data in SAMPLE_MASTER_ACCOUNTS:
         try:
             master = create_master_account(**master_data)
@@ -421,15 +419,17 @@ def seed_master_accounts():
 def seed_query_templates():
     """Seed query library templates."""
     print("\n📊 Seeding query templates...")
-    
+
     for template in SAMPLE_QUERY_TEMPLATES:
         try:
             result = save_query_template(
                 query_type=template["query_type"],
                 account_code=template["account_code"],
-                template_data=template
+                template_data=template,
             )
-            print(f"   ✅ Created query template: {template['query_type']} for {template['account_code']}")
+            print(
+                f"   ✅ Created query template: {template['query_type']} for {template['account_code']}"
+            )
         except Exception as e:
             print(f"   ❌ Error creating query template: {e}")
 
@@ -437,9 +437,9 @@ def seed_query_templates():
 def seed_review_session():
     """Seed a sample review session."""
     print("\n📊 Seeding review session...")
-    
+
     try:
-        session_id = f"SESSION-MAR24-001"
+        session_id = "SESSION-MAR24-001"
         result = create_review_session(
             session_id=session_id,
             period="Mar-24",
@@ -450,19 +450,29 @@ def seed_review_session():
                 "status": "in_progress",
                 "accounts_in_scope": [acc["account_code"] for acc in SAMPLE_GL_ACCOUNTS],
                 "checkpoints": [
-                    {"name": "Data Collection", "completed_at": datetime.utcnow() - timedelta(days=8)},
-                    {"name": "Initial Review", "completed_at": datetime.utcnow() - timedelta(days=5)}
+                    {
+                        "name": "Data Collection",
+                        "completed_at": datetime.utcnow() - timedelta(days=8),
+                    },
+                    {
+                        "name": "Initial Review",
+                        "completed_at": datetime.utcnow() - timedelta(days=5),
+                    },
                 ],
                 "milestones": [
                     {"name": "All assignments created", "target": "Day 2", "status": "completed"},
                     {"name": "50% accounts reviewed", "target": "Day 7", "status": "in_progress"},
-                    {"name": "Final approval", "target": "Day 15", "status": "pending"}
+                    {"name": "Final approval", "target": "Day 15", "status": "pending"},
                 ],
                 "overall_progress": 45,
                 "blockers": [
-                    {"issue": "Pending bank statements", "account": "10010001", "raised_on": datetime.utcnow() - timedelta(days=2)}
-                ]
-            }
+                    {
+                        "issue": "Pending bank statements",
+                        "account": "10010001",
+                        "raised_on": datetime.utcnow() - timedelta(days=2),
+                    }
+                ],
+            },
         )
         print(f"   ✅ Created review session: {session_id}")
     except Exception as e:
@@ -472,7 +482,7 @@ def seed_review_session():
 def seed_user_feedback():
     """Seed user feedback and observations."""
     print("\n📊 Seeding user feedback...")
-    
+
     for feedback in OBSERVATION_DATA:
         try:
             result = save_user_feedback(
@@ -483,8 +493,8 @@ def seed_user_feedback():
                 additional_data={
                     "priority": feedback["priority"],
                     "category": feedback["category"],
-                    "tags": ["mar-24", feedback["observation_type"]]
-                }
+                    "tags": ["mar-24", feedback["observation_type"]],
+                },
             )
             print(f"   ✅ Created feedback: {feedback['observation_type']}")
         except Exception as e:
@@ -494,7 +504,7 @@ def seed_user_feedback():
 def seed_account_templates():
     """Seed account master templates."""
     print("\n📊 Seeding account templates...")
-    
+
     templates = [
         {
             "account_code": "10010001",
@@ -502,7 +512,7 @@ def seed_account_templates():
             "nature": "BS - Current Assets - Cash and Bank",
             "standard_query_type": "Balance Confirmation",
             "department": "Treasury",
-            "is_active": True
+            "is_active": True,
         },
         {
             "account_code": "10020002",
@@ -510,10 +520,10 @@ def seed_account_templates():
             "nature": "BS - Current Assets - Trade Receivables",
             "standard_query_type": "Aging Analysis",
             "department": "Accounts",
-            "is_active": True
-        }
+            "is_active": True,
+        },
     ]
-    
+
     for template_data in templates:
         try:
             template = create_account_template(**template_data)
@@ -526,18 +536,19 @@ def seed_account_templates():
 # Main Execution
 # ============================================================================
 
+
 def main():
     """Main seeding function."""
-    print("\n" + "="*70)
+    print("\n" + "=" * 70)
     print("🌱 Project Aura - Sample Data Seeding Script")
-    print("="*70)
-    
+    print("=" * 70)
+
     try:
         # Initialize databases
         print("\n🔧 Initializing databases...")
         init_db()
         init_mongo_collections()
-        
+
         # Seed data in order (maintaining referential integrity)
         users = seed_users()
         gl_accounts = seed_gl_accounts(users)
@@ -547,23 +558,24 @@ def main():
         seed_query_templates()
         seed_review_session()
         seed_user_feedback()
-        
-        print("\n" + "="*70)
+
+        print("\n" + "=" * 70)
         print("✅ Sample data seeding completed successfully!")
-        print("="*70)
+        print("=" * 70)
         print("\n📈 Summary:")
         print(f"   - {len(SAMPLE_USERS)} users created")
         print(f"   - {len(SAMPLE_GL_ACCOUNTS)} GL accounts created")
         print(f"   - {len(SAMPLE_GL_ACCOUNTS)} responsibility assignments created")
         print(f"   - {len(SAMPLE_MASTER_ACCOUNTS)} master accounts created")
         print(f"   - {len(SAMPLE_QUERY_TEMPLATES)} query templates created")
-        print(f"   - 1 review session created")
+        print("   - 1 review session created")
         print(f"   - {len(OBSERVATION_DATA)} feedback items created")
         print("\n🎯 Ready for testing the data ingestion pipeline!\n")
-        
+
     except Exception as e:
         print(f"\n❌ Error during seeding: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

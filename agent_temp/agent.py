@@ -14,14 +14,14 @@ Dependencies:
     langchain (v0.0.350), OpenAI API (via ChatOpenAI), src.langchain_tools
 """
 
-import os
 import logging
-from typing import Optional, Dict, Any, List
+import os
+from typing import Any
 
-from langchain.chat_models import ChatOpenAI
-from langchain.agents import initialize_agent, AgentType
-from langchain.memory import ConversationBufferMemory
+from langchain.agents import AgentType, initialize_agent
 from langchain.agents.agent import AgentExecutor
+from langchain.chat_models import ChatOpenAI
+from langchain.memory import ConversationBufferMemory
 
 from src.langchain_tools import get_all_tools
 
@@ -40,8 +40,8 @@ TEMPERATURE = float(os.getenv("AURA_LLM_TEMP", "0.0"))
 VERBOSE = os.getenv("AURA_AGENT_VERBOSE", "false").lower() in ("1", "true", "yes")
 
 # Module-level singletons
-_AGENT_EXECUTOR: Optional[AgentExecutor] = None
-_SESSION_MEMORIES: Dict[str, ConversationBufferMemory] = {}
+_AGENT_EXECUTOR: AgentExecutor | None = None
+_SESSION_MEMORIES: dict[str, ConversationBufferMemory] = {}
 
 
 def _create_llm():
@@ -51,7 +51,7 @@ def _create_llm():
     return llm
 
 
-def create_agent(tools: Optional[List] = None, verbose: bool = VERBOSE):
+def create_agent(tools: list | None = None, verbose: bool = VERBOSE):
     """
     Build and return an initialized AgentExecutor wired to your structured tools.
     This is idempotent: calling repeatedly will recreate the executor.
@@ -72,7 +72,7 @@ def create_agent(tools: Optional[List] = None, verbose: bool = VERBOSE):
     return agent_exec
 
 
-def _get_memory_for_session(session_id: Optional[str]) -> Optional[ConversationBufferMemory]:
+def _get_memory_for_session(session_id: str | None) -> ConversationBufferMemory | None:
     """
     Return ConversationBufferMemory for a session_id (create if missing).
     Memory is kept in-process; if you need persistence, replace with Redis/File-backed memory.
@@ -84,7 +84,7 @@ def _get_memory_for_session(session_id: Optional[str]) -> Optional[ConversationB
     return _SESSION_MEMORIES[session_id]
 
 
-def ask(query: str, session_id: Optional[str] = None, max_steps: int = 6) -> Dict[str, Any]:
+def ask(query: str, session_id: str | None = None, max_steps: int = 6) -> dict[str, Any]:
     """
     Execute a single query through the agent.
     Returns a dict with keys: answer (str), tool_calls (list), raw (agent output)

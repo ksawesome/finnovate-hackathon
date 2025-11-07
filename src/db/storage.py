@@ -22,11 +22,11 @@ VECTORS_DIR.mkdir(parents=True, exist_ok=True)
 def save_raw_csv(df: pd.DataFrame, filename: str) -> Path:
     """
     Save raw CSV to data/raw/ directory.
-    
+
     Args:
         df: DataFrame to save.
         filename: Name of the CSV file.
-        
+
     Returns:
         Path to saved file.
     """
@@ -38,10 +38,10 @@ def save_raw_csv(df: pd.DataFrame, filename: str) -> Path:
 def load_raw_csv(filename: str) -> pd.DataFrame:
     """
     Load CSV from data/raw/ directory.
-    
+
     Args:
         filename: Name of the CSV file.
-        
+
     Returns:
         Loaded DataFrame.
     """
@@ -52,11 +52,11 @@ def load_raw_csv(filename: str) -> pd.DataFrame:
 def save_processed_parquet(df: pd.DataFrame, filename: str) -> Path:
     """
     Save processed data as Parquet in data/processed/ directory.
-    
+
     Args:
         df: DataFrame to save.
         filename: Name of the Parquet file (without extension).
-        
+
     Returns:
         Path to saved file.
     """
@@ -70,10 +70,10 @@ def save_processed_parquet(df: pd.DataFrame, filename: str) -> Path:
 def load_processed_parquet(filename: str) -> pd.DataFrame:
     """
     Load Parquet from data/processed/ directory.
-    
+
     Args:
         filename: Name of the Parquet file.
-        
+
     Returns:
         Loaded DataFrame.
     """
@@ -86,22 +86,22 @@ def load_processed_parquet(filename: str) -> pd.DataFrame:
 def save_supporting_document(file_content: bytes, filename: str, gl_code: str) -> Path:
     """
     Save supporting document (PDF, Excel, etc.) to data/supporting_docs/.
-    
+
     Args:
         file_content: Binary content of the file.
         filename: Original filename.
         gl_code: GL account code for organizing files.
-        
+
     Returns:
         Path to saved file.
     """
     gl_dir = SUPPORTING_DOCS_DIR / gl_code
     gl_dir.mkdir(exist_ok=True)
-    
+
     filepath = gl_dir / filename
     with open(filepath, "wb") as f:
         f.write(file_content)
-    
+
     return filepath
 
 

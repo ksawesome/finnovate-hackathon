@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, ClassVar
 
 from .db.mongodb import log_audit_event
 
@@ -23,20 +23,24 @@ from .db.postgres import (
 # Optional logger (Phase 0 convention)
 try:
     from .utils.logging_config import StructuredLogger  # type: ignore
+
     logger = StructuredLogger(__name__)
 except Exception:  # pragma: no cover - fallback
+
     class _Dummy:
         def log_event(self, *args, **kwargs):
             pass
+
     logger = _Dummy()
 
 
 @dataclass
 class AssignmentRule:
     """Rule for assigning GL accounts."""
+
     rule_name: str
     priority: int  # lower = higher priority
-    conditions: Dict[str, Any]
+    conditions: dict[str, Any]
     assignee_type: str  # "reviewer", "approver", "both"
     sla_days: int
     description: str
@@ -45,21 +49,22 @@ class AssignmentRule:
 @dataclass
 class AssignmentResult:
     """Result of assignment operation."""
+
     gl_account_id: int
     account_code: str
     entity: str
     period: str
-    reviewer_id: Optional[int]
-    reviewer_name: Optional[str]
-    approver_id: Optional[int]
-    approver_name: Optional[str]
+    reviewer_id: int | None
+    reviewer_name: str | None
+    approver_id: int | None
+    approver_name: str | None
     assignment_date: datetime
     due_date: datetime
     sla_days: int
     criticality: str
     rule_applied: str
     success: bool
-    error: Optional[str] = None
+    error: str | None = None
 
     def to_dict(self) -> dict:
         result = asdict(self)
@@ -72,7 +77,7 @@ class AssignmentEngine:
     """Engine for automatic GL account assignment."""
 
     # Updated thresholds per decisions: 100M / 25M
-    DEFAULT_RULES = [
+    DEFAULT_RULES: ClassVar[list[AssignmentRule]] = [
         AssignmentRule(
             rule_name="critical_high_balance",
             priority=1,
@@ -115,7 +120,7 @@ class AssignmentEngine:
         ),
     ]
 
-    def __init__(self, rules: Optional[List[AssignmentRule]] = None):
+    def __init__(self, rules: list[AssignmentRule] | None = None):
         self.rules = sorted(rules or self.DEFAULT_RULES, key=lambda r: r.priority)
         self.session = get_postgres_session()
 
@@ -125,32 +130,30 @@ class AssignmentEngine:
         if "criticality" in cond and (gl_account.criticality or "") != cond["criticality"]:
             return False
         # Balance threshold
-        if "balance_threshold" in cond and abs(float(gl_account.balance or 0)) < cond["balance_threshold"]:
+        if (
+            "balance_threshold" in cond
+            and abs(float(gl_account.balance or 0)) < cond["balance_threshold"]
+        ):
             return False
         # Exact balance
-        if "balance" in cond and float(gl_account.balance or 0) != float(cond["balance"]):
-            return False
-        return True
+        return not ("balance" in cond and float(gl_account.balance or 0) != float(cond["balance"]))
 
-    def _get_available_reviewers(self, entity: str) -> List[User]:
-        return (
-            self.session.query(User)
-            .filter(User.role.in_(["reviewer", "senior_reviewer"]))
-            .all()
-        )
+    def _get_available_reviewers(self, entity: str) -> list[User]:
+        return self.session.query(User).filter(User.role.in_(["reviewer", "senior_reviewer"])).all()
 
-    def _get_available_approvers(self, entity: str) -> List[User]:
+    def _get_available_approvers(self, entity: str) -> list[User]:
         return self.session.query(User).filter(User.role == "approver").all()
 
-    def _least_loaded(self, users: List[User], entity: str, period: str) -> Optional[User]:
+    def _least_loaded(self, users: list[User], entity: str, period: str) -> User | None:
         if not users:
             return None
-        counts: Dict[int, int] = {}
+        counts: dict[int, int] = {}
         for u in users:
             q = self.session.query(ResponsibilityMatrix).filter_by(entity=entity, period=period)
             # Count both reviewer and approver assignments for fairness
             counts[u.id] = q.filter(
-                (ResponsibilityMatrix.reviewer_id == u.id) | (ResponsibilityMatrix.approver_id == u.id)
+                (ResponsibilityMatrix.reviewer_id == u.id)
+                | (ResponsibilityMatrix.approver_id == u.id)
             ).count()
         min_user_id = min(counts, key=counts.get)
         return next(u for u in users if u.id == min_user_id)
@@ -158,8 +161,8 @@ class AssignmentEngine:
     def assign_account(
         self,
         gl_account: GLAccount,
-        force_reviewer_id: Optional[int] = None,
-        force_approver_id: Optional[int] = None,
+        force_reviewer_id: int | None = None,
+        force_approver_id: int | None = None,
     ) -> AssignmentResult:
         try:
             # Determine rule
@@ -174,12 +177,24 @@ class AssignmentEngine:
             reviewer = None
             approver = None
             if matched.assignee_type in ("reviewer", "both"):
-                reviewer = self.session.query(User).get(force_reviewer_id) if force_reviewer_id else self._least_loaded(
-                    self._get_available_reviewers(gl_account.entity), gl_account.entity, gl_account.period
+                reviewer = (
+                    self.session.query(User).get(force_reviewer_id)
+                    if force_reviewer_id
+                    else self._least_loaded(
+                        self._get_available_reviewers(gl_account.entity),
+                        gl_account.entity,
+                        gl_account.period,
+                    )
                 )
             if matched.assignee_type in ("approver", "both"):
-                approver = self.session.query(User).get(force_approver_id) if force_approver_id else self._least_loaded(
-                    self._get_available_approvers(gl_account.entity), gl_account.entity, gl_account.period
+                approver = (
+                    self.session.query(User).get(force_approver_id)
+                    if force_approver_id
+                    else self._least_loaded(
+                        self._get_available_approvers(gl_account.entity),
+                        gl_account.entity,
+                        gl_account.period,
+                    )
                 )
 
             assignment_date = datetime.utcnow()
@@ -240,7 +255,9 @@ class AssignmentEngine:
                 success=True,
             )
         except Exception as e:  # pragma: no cover - defensive
-            logger.log_event("assignment_failed", error=str(e), gl_account_id=getattr(gl_account, "id", None))
+            logger.log_event(
+                "assignment_failed", error=str(e), gl_account_id=getattr(gl_account, "id", None)
+            )
             return AssignmentResult(
                 gl_account_id=getattr(gl_account, "id", 0),
                 account_code=getattr(gl_account, "account_code", "UNKNOWN"),
@@ -259,7 +276,7 @@ class AssignmentEngine:
                 error=str(e),
             )
 
-    def assign_batch(self, entity: str, period: str, skip_existing: bool = True) -> Dict[str, Any]:
+    def assign_batch(self, entity: str, period: str, skip_existing: bool = True) -> dict[str, Any]:
         # Fetch candidate accounts
         query = self.session.query(GLAccount).filter_by(entity=entity, period=period)
         if skip_existing:
@@ -273,11 +290,11 @@ class AssignmentEngine:
                 query = query.filter(GLAccount.id.notin_(assigned_ids))
         accounts = query.all()
 
-        results: List[AssignmentResult] = []
+        results: list[AssignmentResult] = []
         for acc in accounts:
             results.append(self.assign_account(acc))
 
-        by_rule: Dict[str, int] = {}
+        by_rule: dict[str, int] = {}
         for r in results:
             by_rule[r.rule_applied] = by_rule.get(r.rule_applied, 0) + (1 if r.success else 0)
 
@@ -309,6 +326,6 @@ class AssignmentEngine:
             pass
 
 
-def assign_accounts_for_period(entity: str, period: str, **kwargs) -> Dict[str, Any]:
+def assign_accounts_for_period(entity: str, period: str, **kwargs) -> dict[str, Any]:
     engine = AssignmentEngine()
     return engine.assign_batch(entity, period, **kwargs)

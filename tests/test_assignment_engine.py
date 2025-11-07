@@ -60,7 +60,9 @@ class FakeGL:
 def _patch_db_and_audit(monkeypatch):
     # Avoid real DB and Mongo calls
     monkeypatch.setattr("src.assignment_engine.get_postgres_session", lambda: FakeSession([]))
-    monkeypatch.setattr("src.assignment_engine.create_responsibility_assignment", lambda *a, **k: None)
+    monkeypatch.setattr(
+        "src.assignment_engine.create_responsibility_assignment", lambda *a, **k: None
+    )
     monkeypatch.setattr("src.assignment_engine.log_audit_event", lambda *a, **k: None)
     yield
 
@@ -129,8 +131,12 @@ def test_assign_batch_basic_summary(monkeypatch):
     ]
     eng = AssignmentEngine()
     eng.session = FakeSession(accounts)
-    monkeypatch.setattr(eng, "_get_available_reviewers", lambda entity: [SimpleNamespace(id=1, name="R1")])
-    monkeypatch.setattr(eng, "_get_available_approvers", lambda entity: [SimpleNamespace(id=10, name="A1")])
+    monkeypatch.setattr(
+        eng, "_get_available_reviewers", lambda entity: [SimpleNamespace(id=1, name="R1")]
+    )
+    monkeypatch.setattr(
+        eng, "_get_available_approvers", lambda entity: [SimpleNamespace(id=10, name="A1")]
+    )
     monkeypatch.setattr(eng, "_least_loaded", lambda users, entity, period: users[0])
 
     summary = eng.assign_batch("ENT01", "2025-03", skip_existing=False)

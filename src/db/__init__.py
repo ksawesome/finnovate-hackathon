@@ -1,7 +1,6 @@
 """Database connection managers and configuration."""
 
 import os
-from typing import Optional
 
 from pymongo import MongoClient
 from pymongo.database import Database
@@ -34,12 +33,7 @@ def get_postgres_engine():
     """Get or create PostgreSQL engine."""
     global _postgres_engine
     if _postgres_engine is None:
-        _postgres_engine = create_engine(
-            POSTGRES_URL,
-            pool_size=10,
-            max_overflow=20,
-            echo=False
-        )
+        _postgres_engine = create_engine(POSTGRES_URL, pool_size=10, max_overflow=20, echo=False)
     return _postgres_engine
 
 
@@ -60,7 +54,7 @@ def get_mongo_client() -> MongoClient:
     return _mongo_client
 
 
-def get_mongo_database(db_name: Optional[str] = None) -> Database:
+def get_mongo_database(db_name: str | None = None) -> Database:
     """Get MongoDB database."""
     client = get_mongo_client()
     return client[db_name or MONGO_DB]

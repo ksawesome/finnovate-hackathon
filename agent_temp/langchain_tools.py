@@ -19,15 +19,15 @@ Usage:
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from langchain.tools import StructuredTool
 from pydantic import BaseModel, Field
 
-from src.analytics import calculate_variance, identify_anomalies, get_review_status
-from src.ml_model import predict, load_model
-from src.vector_store import query_knowledgebase
+from src.analytics import calculate_variance, identify_anomalies
 from src.data_validation import run_validation
+from src.ml_model import load_model, predict
+from src.vector_store import query_knowledgebase
 
 logger = logging.getLogger("aura.langchain_tools")
 logger.setLevel(logging.INFO)
@@ -95,7 +95,7 @@ def _knowledge_tool(input: KnowledgeQueryInput) -> str:
         return f"Error: {e}"
 
 
-def _predict_tool(input: PredictInput) -> Dict[str, Any]:
+def _predict_tool(input: PredictInput) -> dict[str, Any]:
     try:
         df = {
             "Debit": [input.debit],
@@ -114,7 +114,7 @@ def _predict_tool(input: PredictInput) -> Dict[str, Any]:
 # Tool Registry
 # -----------------------------
 
-def get_all_tools() -> List[StructuredTool]:
+def get_all_tools() -> list[StructuredTool]:
     """
     Return a list of all tools for agent initialization.
     """

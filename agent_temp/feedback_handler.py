@@ -29,13 +29,15 @@ Responsibilities:
 """
 
 from __future__ import annotations
-import os
-import logging
-import pandas as pd
-from datetime import datetime
-from typing import Dict, Any, Optional
 
-from src.ml_model import retrain_with_feedback, train, load_model
+import logging
+import os
+from datetime import datetime
+from typing import Any
+
+import pandas as pd
+
+from src.ml_model import retrain_with_feedback
 
 logger = logging.getLogger("aura.feedback")
 logger.setLevel(logging.INFO)
@@ -58,7 +60,7 @@ def _ensure_feedback_path() -> str:
     return FEEDBACK_PATH
 
 
-def _sanitize_record(record: Dict[str, Any]) -> Dict[str, Any]:
+def _sanitize_record(record: dict[str, Any]) -> dict[str, Any]:
     """
     Validate and sanitize a single feedback record.
     """
@@ -72,7 +74,7 @@ def _sanitize_record(record: Dict[str, Any]) -> Dict[str, Any]:
     return record
 
 
-def collect_feedback(record: Dict[str, Any]) -> None:
+def collect_feedback(record: dict[str, Any]) -> None:
     """
     Append a new correction record to the feedback CSV (append-only).
     """
@@ -122,8 +124,8 @@ def run_retrain_pipeline(
     base_df: pd.DataFrame,
     feature_cols: list,
     target_col: str,
-    numeric_features: Optional[list] = None
-) -> Dict[str, Any]:
+    numeric_features: list | None = None
+) -> dict[str, Any]:
     """
     Load feedback, merge with base, retrain using ml_model.retrain_with_feedback(),
     and return retrain summary.
@@ -151,7 +153,7 @@ def run_retrain_pipeline(
     return result
 
 
-def validate_feedback_integrity() -> Dict[str, Any]:
+def validate_feedback_integrity() -> dict[str, Any]:
     """
     Simple integrity check for the feedback log: duplicate accounts, invalid mappings, missing data.
     """

@@ -15,7 +15,7 @@ def create_agent(tools: list[Tool]) -> AgentExecutor:
     Returns:
         AgentExecutor: Configured agent.
     """
-    llm = ChatOpenAI(temperature=0)
+    ChatOpenAI(temperature=0)
     agent = ...  # Placeholder for agent creation
     executor = AgentExecutor.from_agent_and_tools(agent=agent, tools=tools)
     return executor

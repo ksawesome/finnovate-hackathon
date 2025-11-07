@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
-from typing import Any, Dict, List
+from typing import Any
 
 from .data_ingestion import IngestionOrchestrator
 from .utils.logging_config import StructuredLogger
@@ -21,7 +21,7 @@ class BatchIngestionOrchestrator:
         self.orchestrator = IngestionOrchestrator()
         self.cancelled = False
 
-    def ingest_batch(self, files: List[Dict[str, str]]) -> Dict[str, Any]:
+    def ingest_batch(self, files: list[dict[str, str]]) -> dict[str, Any]:
         """Ingest a batch of files concurrently.
 
         Each entry in *files* must provide ``file_path``, ``entity``, and ``period`` keys.
@@ -41,10 +41,10 @@ class BatchIngestionOrchestrator:
                 "results": [],
             }
 
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
 
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-            future_map: Dict[Future, Dict[str, str]] = {
+            future_map: dict[Future, dict[str, str]] = {
                 executor.submit(
                     self._ingest_with_retry,
                     file_info["file_path"],
@@ -107,7 +107,7 @@ class BatchIngestionOrchestrator:
             "results": results,
         }
 
-    def _ingest_with_retry(self, file_path: str, entity: str, period: str) -> Dict[str, Any]:
+    def _ingest_with_retry(self, file_path: str, entity: str, period: str) -> dict[str, Any]:
         """Run ingestion with exponential backoff retry (1s, 2s, 4s)."""
         for attempt in range(self.max_retries):
             try:
@@ -159,7 +159,7 @@ class BatchIngestionOrchestrator:
         logger.warning("Batch ingestion cancellation requested")
 
     @staticmethod
-    def _cancel_pending_futures(future_map: Dict[Future, Dict[str, str]]) -> None:
+    def _cancel_pending_futures(future_map: dict[Future, dict[str, str]]) -> None:
         """Cancel any futures that have not yet completed."""
         for future in future_map:
             if not future.done():
