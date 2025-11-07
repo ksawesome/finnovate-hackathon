@@ -3,12 +3,64 @@
 ## Project Overview
 **Project Aura** is an AI-powered financial statement review agent built for the Adani Group's 1,000+ entity finance operations. It automates GL account validation, consolidation, and reporting using a tri-store architecture (PostgreSQL, MongoDB, file system).
 
-## Architecture: Tri-Store System
+## **CRITICAL: Always Check Documentation First** 📚
 
-### Data Storage Strategy
-- **PostgreSQL** (`src/db/postgres.py`): Structured financial data (Users, GLAccount, ResponsibilityMatrix, ReviewLog)
-- **MongoDB** (`src/db/mongodb.py`): Semi-structured metadata (supporting_docs, audit_trail, validation_results)
-- **File System** (`src/db/storage.py`): Raw CSVs (`data/raw/`), Parquet cache (`data/processed/`), supporting docs (`data/supporting_docs/`), ChromaDB vectors (`data/vectors/`)
+Before starting any task, **ALWAYS** check the `docs/` folder for context:
+
+### Required Documentation Checks
+1. **Architecture Questions** → Read `docs/Architecture.md` and `docs/Storage-Architecture.md`
+2. **Database Schema** → Check `docs/Data-Storage-Mapping.md` for table/collection mappings
+3. **Data Understanding** → Review `docs/Trial-Balance-Data-Analysis.md` for all 12 Excel sheets
+4. **Phase Status** → Check `docs/Phase-0-Complete.md` and `docs/Day-0-Setup-Complete.md`
+5. **ADRs** → Review `docs/adr/` for architectural decisions
+
+### Documentation Structure
+```
+docs/
+├── phases/              # Phase completion reports
+│   └── Phase-0-Complete.md
+├── architecture/        # System design documents
+│   ├── Architecture.md
+│   ├── Storage-Architecture.md
+│   └── Data-Storage-Mapping.md
+├── guides/              # Developer guides and analysis
+│   ├── Trial-Balance-Data-Analysis.md
+│   └── Test-Plan.md
+├── adr/                 # Architectural Decision Records
+│   ├── ADR-001-unified-python-stack.md
+│   └── ADR-002-agent-with-structured-tools.md
+└── planning/            # Project plans
+    ├── 6-Day-Execution-Plan.md
+    └── Concept-Note.md
+```
+
+**Pattern**: When asked about data models, storage decisions, or implementation details:
+1. Check docs first → Understand existing patterns
+2. Reference ADRs → Follow established architectural decisions
+3. Read phase completion docs → Know what's already implemented
+4. Then write code → Consistent with existing design
+
+## Architecture: Tri-Store System (Phase 0 Complete ✅)
+
+### Data Storage Strategy - EXTENDED
+- **PostgreSQL** (`src/db/postgres.py`): 
+  - **7 tables**: users, gl_accounts (30+ cols), responsibility_matrix (20+ cols), 
+    master_chart_of_accounts, gl_account_versions, account_master_template, review_log
+  - **40+ CRUD functions**: create_gl_account, create_responsibility_assignment, 
+    create_version_snapshot, get_user_assignments, etc.
+  - **Capacity**: 501 active accounts, 2736 master accounts, 1,000+ entities
+  
+- **MongoDB** (`src/db/mongodb.py`): 
+  - **8 collections**: supporting_docs, audit_trail, validation_results, gl_metadata, 
+    assignment_details, review_sessions, user_feedback, query_library
+  - **30+ helper functions**: save_gl_metadata, create_review_session, save_user_feedback, 
+    get_most_used_templates, etc.
+  - **Features**: Nested documents, full-text search, temporal queries
+  
+- **File System** (`src/db/storage.py`): 
+  - Raw CSVs (`data/raw/`), Parquet cache (`data/processed/`), 
+  - Supporting docs (`data/supporting_docs/`), ChromaDB vectors (`data/vectors/`)
+  - Sample data: `data/sample/trial_balance_cleaned.csv` (501 records)
 
 **Key Pattern**: All DB connections use env-var-driven singletons from `src/db/__init__.py`:
 ```python
@@ -21,6 +73,8 @@ db = get_mongo_database()
 1. **Ingestion** (`data_ingestion.py`): CSV → `save_raw_csv()` → PostgreSQL via `create_gl_account()` → `log_audit_event()` to MongoDB
 2. **Validation** (`data_validation.py`): Great Expectations suite → results to MongoDB (`save_validation_results()`)
 3. **Analytics** (`analytics.py`): Query PostgreSQL → cache to Parquet via `save_processed_parquet()`
+
+**Sample Data Available**: Run `python scripts/seed_sample_data.py` to populate 24+ test records
 
 ## Critical Developer Workflows
 
