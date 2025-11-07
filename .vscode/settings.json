@@ -29,5 +29,25 @@
             "database": "finnovate",
             "username": "admin"
         }
+    ],
+    "vscode-postgres.connections": [
+        {
+            "name": "Finnovate Local",
+            "host": "localhost",
+            "port": 5432,
+            "user": "admin",
+            "password": "hackathon2025",
+            "database": "finnovate",
+            "ssl": false
+        }
+    ],
+    "mdb.connectionSaving.hideOptionToChooseWhereToSaveNewConnections": false,
+    "mdb.connections": [
+        {
+            "id": "finnovate-local",
+            "name": "Finnovate MongoDB",
+            "connectionString": "mongodb://localhost:27017/finnovate",
+            "storageLocation": "workspace"
+        }
     ]
 }
