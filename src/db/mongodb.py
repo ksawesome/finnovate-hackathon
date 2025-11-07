@@ -596,3 +596,78 @@ def get_most_used_templates(limit: int = 20) -> List[Dict]:
         .sort("usage_count", -1)
         .limit(limit)
     )
+
+
+# ============================================================================
+# Data Ingestion Support Functions
+# ============================================================================
+
+def save_gl_metadata(
+    entity: str,
+    period: str,
+    profile: Dict[str, Any],
+    fingerprint: str,
+    ingestion_result: Dict[str, Any]
+) -> str:
+    """
+    Save GL metadata to MongoDB
+    
+    Args:
+        entity: Entity code
+        period: Period
+        profile: Data profile dictionary
+        fingerprint: File fingerprint
+        ingestion_result: Ingestion result
+        
+    Returns:
+        Inserted document ID
+    """
+    db = get_mongo_database()
+    collection = db.gl_metadata
+    
+    document = {
+        "entity": entity,
+        "period": period,
+        "file_fingerprint": fingerprint,
+        "data_profile": profile,
+        "ingestion_result": ingestion_result,
+        "created_at": datetime.utcnow(),
+    }
+    
+    result = collection.insert_one(document)
+    
+    return str(result.inserted_id)
+
+
+def log_audit_event(
+    event_type: str,
+    entity: str = None,
+    period: str = None,
+    **metadata
+) -> str:
+    """
+    Log audit event to MongoDB
+    
+    Args:
+        event_type: Event taxonomy type
+        entity: Entity code
+        period: Period
+        **metadata: Additional metadata
+        
+    Returns:
+        Inserted document ID
+    """
+    db = get_mongo_database()
+    collection = db.audit_trail
+    
+    document = {
+        "event_type": event_type,
+        "entity": entity,
+        "period": period,
+        "timestamp": datetime.utcnow(),
+        "metadata": metadata
+    }
+    
+    result = collection.insert_one(document)
+    
+    return str(result.inserted_id)

@@ -634,3 +634,78 @@ def get_account_review_history(gl_account_id: int) -> List[ReviewLog]:
         ).order_by(ReviewLog.reviewed_at.desc()).all()
     finally:
         session.close()
+
+
+# ============================================================================
+# Bulk Operations
+# ============================================================================
+
+def bulk_create_gl_accounts(df, entity: str, period: str) -> dict:
+    """
+    Bulk insert GL accounts with conflict resolution
+    
+    Args:
+        df: DataFrame with GL account data (pandas DataFrame)
+        entity: Entity code
+        period: Period
+        
+    Returns:
+        Dictionary with inserted/updated/failed counts
+    """
+    import pandas as pd
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    
+    session = get_postgres_session()
+    
+    inserted_count = 0
+    updated_count = 0
+    failed_count = 0
+    
+    try:
+        records = df.to_dict('records')
+        
+        # Add entity and period to each record if not present
+        for record in records:
+            if 'entity' not in record or pd.isna(record.get('entity')):
+                record['entity'] = entity
+            if 'period' not in record or pd.isna(record.get('period')):
+                record['period'] = period
+            
+            # Handle NaN values - convert to None
+            for key, value in record.items():
+                if pd.isna(value):
+                    record[key] = None
+        
+        # Bulk insert with ON CONFLICT DO UPDATE
+        stmt = pg_insert(GLAccount).values(records)
+        
+        # Update on conflict (account_code + company_code + period unique constraint)
+        stmt = stmt.on_conflict_do_update(
+            constraint='uq_gl_account_company_period',
+            set_={
+                'account_name': stmt.excluded.account_name,
+                'balance': stmt.excluded.balance,
+                'bs_pl': stmt.excluded.bs_pl,
+                'status': stmt.excluded.status,
+                'updated_at': datetime.utcnow()
+            }
+        )
+        
+        result = session.execute(stmt)
+        session.commit()
+        
+        inserted_count = result.rowcount
+        
+        return {
+            "inserted": inserted_count,
+            "updated": 0,  # PostgreSQL doesn't distinguish in rowcount
+            "failed": failed_count
+        }
+        
+    except Exception as e:
+        session.rollback()
+        print(f"Error in bulk_create_gl_accounts: {e}")
+        raise e
+        
+    finally:
+        session.close()
