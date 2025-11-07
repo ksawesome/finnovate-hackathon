@@ -1,15 +1,16 @@
 """Data ingestion module for loading and preprocessing trial balance data."""
 
-import pandas as pd
 import hashlib
-from pathlib import Path
-from decimal import Decimal
-from typing import Dict, Any
 from datetime import datetime
+from decimal import Decimal
+from pathlib import Path
+from typing import Any, Dict
 
-from .db.storage import save_raw_csv, save_processed_parquet, load_raw_csv
+import pandas as pd
+
+from .db.mongodb import log_audit_event, log_gl_audit_event
 from .db.postgres import create_gl_account, get_user_by_email
-from .db.mongodb import log_audit_event
+from .db.storage import save_processed_parquet, save_raw_csv
 from .utils.logging_config import StructuredLogger
 
 logger = StructuredLogger("data_ingestion")
@@ -98,13 +99,13 @@ class SchemaMapper:
         'account_name',
         'balance',
         'entity',
-        'company_code',
         'period',
         'bs_pl',
         'status'
     ]
     
     OPTIONAL_COLUMNS = [
+        'company_code',
         'department',
         'criticality',
         'review_status',
@@ -162,6 +163,8 @@ class SchemaMapper:
         mapped_df = df.copy()
         
         # Add default values for missing optional columns
+        if 'company_code' not in mapped_df.columns:
+            mapped_df['company_code'] = '5500'  # Default company code
         if 'department' not in mapped_df.columns:
             mapped_df['department'] = None
         if 'criticality' not in mapped_df.columns:
@@ -169,8 +172,9 @@ class SchemaMapper:
         if 'review_status' not in mapped_df.columns:
             mapped_df['review_status'] = 'pending'
         
-        # Convert data types
-        mapped_df['balance'] = mapped_df['balance'].astype(float)
+        # Convert data types and handle NULL values
+        # Balance is NOT NULL in DB schema - convert None/NaN to 0.0
+        mapped_df['balance'] = mapped_df['balance'].fillna(0.0).astype(float)
         mapped_df['account_code'] = mapped_df['account_code'].astype(str)
         
         logger.log_event("schema_mapping_completed", rows=len(mapped_df))
@@ -238,6 +242,237 @@ class FileFingerprinter:
             logger.log_event("duplicate_file_detected", fingerprint=fingerprint, level="WARNING")
         
         return is_duplicate
+
+
+class IngestionOrchestrator:
+    """
+    Orchestrate complete ingestion pipeline
+    
+    Flow:
+    1. Upload CSV file
+    2. Profile data
+    3. Validate schema
+    4. Generate fingerprint
+    5. Check for duplicates
+    6. Bulk insert to PostgreSQL
+    7. Save metadata to MongoDB
+    8. Cache to Parquet
+    9. Log audit event
+    """
+    
+    def __init__(self):
+        self.profiler = DataProfiler()
+        self.schema_mapper = SchemaMapper()
+        self.fingerprinter = FileFingerprinter()
+    
+    def ingest_file(
+        self,
+        file_path: str,
+        entity: str,
+        period: str,
+        skip_duplicates: bool = True,
+        validate_before_insert: bool = True,
+        fail_on_validation_error: bool = True,
+        validation_suite_name: str = "ingestion_validation"
+    ) -> Dict[str, Any]:
+        """
+        Ingest CSV file
+        
+        Args:
+            file_path: Path to CSV file
+            entity: Entity code
+            period: Period (YYYY-MM)
+            skip_duplicates: Skip if file already ingested
+            validate_before_insert: Run Great Expectations validation before inserting to PostgreSQL
+            fail_on_validation_error: Abort ingestion if validation fails (critical/high severity)
+            validation_suite_name: Name for validation suite / run identifier
+            
+        Returns:
+            Ingestion result with statistics
+        """
+        from .db.mongodb import save_ingestion_metadata
+        from .db.postgres import bulk_create_gl_accounts
+        # Lazy import to avoid circular dependencies at module load
+        if validate_before_insert:
+            try:
+                from .data_validation import ValidationOrchestrator
+            except Exception as e:  # pragma: no cover - defensive
+                logger.log_event("validation_import_failed", level="ERROR", error=str(e))
+                if fail_on_validation_error:
+                    return {
+                        "status": "failed",
+                        "entity": entity,
+                        "period": period,
+                        "error": f"Failed to import validation module: {e}"
+                    }
+        
+        start_time = datetime.utcnow()
+        
+        logger.log_event(
+            "ingestion_started",
+            file=file_path,
+            entity=entity,
+            period=period
+        )
+        
+        try:
+            # 1. Load CSV
+            df = pd.read_csv(file_path)
+            logger.info(f"Loaded {len(df)} records from {file_path}")
+            
+            # 2. Profile data
+            profile = self.profiler.profile(df)
+            
+            # 3. Validate schema
+            schema_validation = self.schema_mapper.validate_schema(df)
+            
+            if not schema_validation["is_valid"]:
+                raise ValueError(
+                    f"Schema validation failed. Missing columns: {schema_validation['missing_required']}"
+                )
+            
+            # 4. Map to PostgreSQL schema
+            df = self.schema_mapper.map_to_postgres_schema(df)
+            
+            # 4b. (Optional) Run validation prior to fingerprint & persistence
+            validation_metrics: Dict[str, Any] = {}
+            if validate_before_insert:
+                validation_start = datetime.utcnow()
+                try:
+                    orchestrator = ValidationOrchestrator(suite_name=validation_suite_name)
+                    v_result = orchestrator.validate_dataframe(
+                        df,
+                        entity=entity,
+                        period=period,
+                        fail_on_critical=False
+                    )
+                    validation_duration = (datetime.utcnow() - validation_start).total_seconds()
+                    validation_metrics = {
+                        "validation_passed": v_result.passed,
+                        "validation_total_checks": v_result.total_checks,
+                        "validation_failed_checks": v_result.failed_checks,
+                        "validation_critical_failures": v_result.critical_failures,
+                        "validation_success_percentage": v_result.success_percentage,
+                        "validation_duration_seconds": validation_duration,
+                        "validation_suite": v_result.validation_suite,
+                        "validation_failed_expectations": v_result.failed_expectations,
+                    }
+                    logger.log_event(
+                        "pre_ingestion_validation_completed",
+                        passed=v_result.passed,
+                        total_checks=v_result.total_checks,
+                        failed=v_result.failed_checks,
+                        critical_failures=v_result.critical_failures,
+                        duration_seconds=validation_duration
+                    )
+                    if fail_on_validation_error and not v_result.passed:
+                        # Abort before persistence
+                        log_audit_event(
+                            event_type="ingestion_validation_failed",
+                            entity=entity,
+                            period=period,
+                            details={
+                                "failed_checks": v_result.failed_checks,
+                                "critical_failures": v_result.critical_failures,
+                                "failed_expectations": v_result.failed_expectations
+                            }
+                        )
+                        return {
+                            "status": "validation_failed",
+                            "entity": entity,
+                            "period": period,
+                            **validation_metrics
+                        }
+                except Exception as ve:
+                    logger.log_event("pre_ingestion_validation_error", level="ERROR", error=str(ve))
+                    if fail_on_validation_error:
+                        return {
+                            "status": "failed",
+                            "entity": entity,
+                            "period": period,
+                            "error": f"Validation step failed: {ve}"
+                        }
+                    else:
+                        validation_metrics = {
+                            "validation_passed": False,
+                            "validation_error": str(ve)
+                        }
+
+            # 5. Generate fingerprint
+            fingerprint = self.fingerprinter.generate_fingerprint(file_path)
+            
+            # 6. Check duplicates
+            if skip_duplicates and self.fingerprinter.check_duplicate(fingerprint):
+                logger.warning("Duplicate file detected. Skipping ingestion.")
+                return {
+                    "status": "skipped",
+                    "reason": "duplicate",
+                    "fingerprint": fingerprint
+                }
+            
+            # 7. Bulk insert to PostgreSQL
+            result = bulk_create_gl_accounts(df, entity, period)
+            
+            logger.log_event(
+                "db_insert",
+                inserted=result["inserted"],
+                updated=result["updated"],
+                failed=result["failed"]
+            )
+            
+            # 8. Save metadata to MongoDB
+            save_ingestion_metadata(
+                entity=entity,
+                period=period,
+                profile=profile,
+                fingerprint=fingerprint,
+                ingestion_result=result,
+                validation=validation_metrics if validation_metrics else None
+            )
+            
+            # 9. Cache to Parquet
+            save_processed_parquet(df, f"{entity}_{period}_ingested")
+            
+            # 10. Log audit event
+            log_audit_event(
+                event_type="file_ingested",
+                entity=entity,
+                period=period,
+                file_fingerprint=fingerprint,
+                records_processed=result["inserted"] + result["updated"],
+                execution_time_seconds=(datetime.utcnow() - start_time).total_seconds()
+            )
+            
+            logger.log_event(
+                "ingestion_completed",
+                entity=entity,
+                period=period,
+                records=result["inserted"] + result["updated"],
+                duration_seconds=(datetime.utcnow() - start_time).total_seconds()
+            )
+            
+            return {
+                "status": "success",
+                "entity": entity,
+                "period": period,
+                "fingerprint": fingerprint,
+                "profile": profile,
+                "inserted": result["inserted"],
+                "updated": result["updated"],
+                "failed": result["failed"],
+                "duration_seconds": (datetime.utcnow() - start_time).total_seconds(),
+                **({} if not validation_metrics else validation_metrics)
+            }
+            
+        except Exception as e:
+            logger.log_event("error_occurred", level="ERROR", error=str(e))
+            
+            return {
+                "status": "failed",
+                "entity": entity,
+                "period": period,
+                "error": str(e)
+            }
 
 
 def load_trial_balance(file_path: str) -> pd.DataFrame:
@@ -310,8 +545,8 @@ def ingest_to_postgres(df: pd.DataFrame, uploaded_by: str = "system"):
             assigned_user_id=assigned_user_id
         )
         
-        # Log audit event to MongoDB
-        log_audit_event(
+        # Log audit event to MongoDB (GL-scoped)
+        log_gl_audit_event(
             gl_code=str(row['account_code']),
             action="uploaded",
             actor={"email": uploaded_by, "source": "csv_upload"},

@@ -1,7 +1,7 @@
 """Vector store module for RAG using ChromaDB."""
 
-from pathlib import Path
 from typing import List, Optional
+
 import chromadb
 from chromadb.config import Settings
 

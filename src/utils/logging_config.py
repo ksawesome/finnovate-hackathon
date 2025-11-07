@@ -3,11 +3,11 @@ Structured logging configuration for Project Aura
 Provides consistent JSON-formatted logging across all modules
 """
 
-import logging
 import json
+import logging
 from datetime import datetime
-from typing import Dict, Any, Optional
 from pathlib import Path
+from typing import Optional
 
 
 class StructuredLogger:

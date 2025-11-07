@@ -1,16 +1,25 @@
 """PostgreSQL database models and operations using SQLAlchemy."""
 
 from datetime import datetime
-from typing import List, Optional
 from decimal import Decimal
+from typing import List, Optional
 
 from sqlalchemy import (
-    Column, Integer, String, Numeric, DateTime, ForeignKey, Text, Boolean,
-    UniqueConstraint, Index
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, Session
+from sqlalchemy.orm import relationship
 
 from . import get_postgres_engine, get_postgres_session
 
@@ -27,8 +36,8 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     department = Column(String(100))
     role = Column(String(50))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
     # Relationships
     assigned_accounts = relationship("GLAccount", back_populates="assigned_user")
@@ -79,8 +88,8 @@ class GLAccount(Base):
     department = Column(String(50))  # R2R, TRM, O2C, B2P, IDT
     
     # Audit
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
     # Constraints
     __table_args__ = (
@@ -662,7 +671,9 @@ def bulk_create_gl_accounts(df, entity: str, period: str) -> dict:
     failed_count = 0
     
     try:
-        records = df.to_dict('records')
+        # Drop timestamp columns if present - let DB handle via DEFAULT CURRENT_TIMESTAMP
+        df_clean = df.drop(columns=['created_at', 'updated_at'], errors='ignore')
+        records = df_clean.to_dict('records')
         
         # Add entity and period to each record if not present
         for record in records:
@@ -672,32 +683,41 @@ def bulk_create_gl_accounts(df, entity: str, period: str) -> dict:
                 record['period'] = period
             
             # Handle NaN values - convert to None
-            for key, value in record.items():
+            for key, value in list(record.items()):
                 if pd.isna(value):
                     record[key] = None
         
-        # Bulk insert with ON CONFLICT DO UPDATE
-        stmt = pg_insert(GLAccount).values(records)
+        if not records:
+            return {"inserted": 0, "updated": 0, "failed": 0}
         
-        # Update on conflict (account_code + company_code + period unique constraint)
-        stmt = stmt.on_conflict_do_update(
-            constraint='uq_gl_account_company_period',
-            set_={
-                'account_name': stmt.excluded.account_name,
-                'balance': stmt.excluded.balance,
-                'bs_pl': stmt.excluded.bs_pl,
-                'status': stmt.excluded.status,
-                'updated_at': datetime.utcnow()
-            }
-        )
+        # Process in batches to avoid parameter limit (PostgreSQL has ~32767 parameter limit)
+        batch_size = 100  # Safe batch size to stay under parameter limits
+        total_inserted = 0
         
-        result = session.execute(stmt)
+        for i in range(0, len(records), batch_size):
+            batch = records[i:i + batch_size]
+            
+            # Bulk insert with ON CONFLICT DO UPDATE
+            stmt = pg_insert(GLAccount.__table__).values(batch)
+            
+            # Update on conflict (account_code + company_code + period unique constraint)
+            stmt = stmt.on_conflict_do_update(
+                constraint='uq_gl_account_company_period',
+                set_={
+                    'account_name': stmt.excluded.account_name,
+                    'balance': stmt.excluded.balance,
+                    'bs_pl': stmt.excluded.bs_pl,
+                    'status': stmt.excluded.status,
+                }
+            )
+            
+            result = session.execute(stmt)
+            total_inserted += result.rowcount
+        
         session.commit()
         
-        inserted_count = result.rowcount
-        
         return {
-            "inserted": inserted_count,
+            "inserted": total_inserted,
             "updated": 0,  # PostgreSQL doesn't distinguish in rowcount
             "failed": failed_count
         }
@@ -706,6 +726,5 @@ def bulk_create_gl_accounts(df, entity: str, period: str) -> dict:
         session.rollback()
         print(f"Error in bulk_create_gl_accounts: {e}")
         raise e
-        
     finally:
         session.close()

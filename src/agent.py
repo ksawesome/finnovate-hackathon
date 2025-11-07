@@ -1,8 +1,8 @@
 """LangChain agent module."""
 
 from langchain.agents import AgentExecutor
-from langchain_openai import ChatOpenAI
 from langchain.tools import Tool
+from langchain_openai import ChatOpenAI
 
 
 def create_agent(tools: list[Tool]) -> AgentExecutor:

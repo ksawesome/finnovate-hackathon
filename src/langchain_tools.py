@@ -1,7 +1,6 @@
 """LangChain tools module."""
 
 from langchain.tools import BaseTool
-from pydantic import BaseModel
 
 
 class FinancialAnalysisTool(BaseTool):

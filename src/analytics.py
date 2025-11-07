@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from .db.postgres import get_gl_accounts_by_period
-from .db.storage import save_processed_parquet, load_processed_parquet
+from .db.storage import load_processed_parquet, save_processed_parquet
 
 
 def perform_analytics(period: str) -> dict:

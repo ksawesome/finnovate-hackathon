@@ -3,10 +3,10 @@
 import os
 from typing import Optional
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
 from pymongo import MongoClient
 from pymongo.database import Database
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 # PostgreSQL configuration
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")

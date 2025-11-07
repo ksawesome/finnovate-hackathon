@@ -1,0 +1,159 @@
+{
+  "data_asset_type": null,
+  "expectation_suite_name": "unit_suite_severity",
+  "expectations": [
+    {
+      "expectation_type": "expect_column_sum_to_be_between",
+      "kwargs": {
+        "column": "balance",
+        "max_value": 1,
+        "min_value": -1
+      },
+      "meta": {
+        "remediation": "Ensure total debits equal total credits; verify any rounding or missing entries.",
+        "severity": "critical"
+      }
+    },
+    {
+      "expectation_type": "expect_table_columns_to_match_ordered_list",
+      "kwargs": {
+        "column_list": [
+          "account_code",
+          "account_name",
+          "balance",
+          "entity",
+          "period"
+        ]
+      },
+      "meta": {
+        "remediation": "Input must include required columns in correct order; fix header mapping.",
+        "severity": "critical"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "account_code"
+      },
+      "meta": {
+        "remediation": "GL account code cannot be null; fill or drop invalid rows.",
+        "severity": "critical"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": {
+        "column": "balance"
+      },
+      "meta": {
+        "remediation": "Balance cannot be null; fill NaN with 0.0 if appropriate before load.",
+        "severity": "high"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_of_type",
+      "kwargs": {
+        "column": "balance",
+        "type_": "float64"
+      },
+      "meta": {
+        "remediation": "Balance must be numeric (float). Coerce types in preprocessing.",
+        "severity": "high"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "account_code",
+        "regex": "^\\d{8}$"
+      },
+      "meta": {
+        "remediation": "Account codes must be exactly 8 digits.",
+        "severity": "critical"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_in_set",
+      "kwargs": {
+        "column": "entity",
+        "value_set": [
+          "ABEX",
+          "AGEL",
+          "APL"
+        ]
+      },
+      "meta": {
+        "remediation": "Entity must be one of approved entity codes maintained in master data.",
+        "severity": "critical"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "period",
+        "regex": "^\\d{4}-\\d{2}$"
+      },
+      "meta": {
+        "remediation": "Period must be in YYYY-MM format (e.g., 2022-06).",
+        "severity": "critical"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_in_set",
+      "kwargs": {
+        "column": "balance",
+        "mostly": 0.7,
+        "value_set": [
+          0.0
+        ]
+      },
+      "meta": {
+        "business_rule": "Account activity monitoring",
+        "remediation": "Too many zero-balance accounts indicate stale or misclassified GLs.",
+        "severity": "low"
+      }
+    },
+    {
+      "expectation_type": "expect_compound_columns_to_be_unique",
+      "kwargs": {
+        "column_list": [
+          "account_code",
+          "entity",
+          "period"
+        ]
+      },
+      "meta": {
+        "remediation": "Duplicates for (account_code, entity, period) are not allowed; de-duplicate before load.",
+        "severity": "critical"
+      }
+    },
+    {
+      "expectation_type": "expect_column_value_lengths_to_be_between",
+      "kwargs": {
+        "column": "account_name",
+        "max_value": 200,
+        "min_value": 3
+      },
+      "meta": {
+        "remediation": "Account name length must be between 3 and 200 characters.",
+        "severity": "medium"
+      }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "balance",
+        "max_value": 1000000000000,
+        "min_value": -1000000000000
+      },
+      "meta": {
+        "remediation": "Balance out of reasonable range; verify units and sign.",
+        "severity": "high"
+      }
+    }
+  ],
+  "ge_cloud_id": null,
+  "meta": {
+    "great_expectations_version": "0.18.12"
+  }
+}

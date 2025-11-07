@@ -1,9 +1,8 @@
 """MongoDB operations for document-based data."""
 
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
-from pymongo.database import Database
 from pymongo.collection import Collection
 
 from . import get_mongo_database
@@ -112,15 +111,15 @@ def init_mongo_collections():
     query_library.create_index([("usage_count", -1)])  # Most used queries first
     
     print("✅ MongoDB collections and indexes created successfully")
-    print(f"   - 8 collections initialized:")
-    print(f"     • supporting_docs (file metadata)")
-    print(f"     • audit_trail (change tracking)")
-    print(f"     • validation_results (data quality)")
-    print(f"     • gl_metadata (extended GL info)")
-    print(f"     • assignment_details (responsibility tracking)")
-    print(f"     • review_sessions (workflow state)")
-    print(f"     • user_feedback (observations)")
-    print(f"     • query_library (standardized queries)")
+    print("   - 8 collections initialized:")
+    print("     • supporting_docs (file metadata)")
+    print("     • audit_trail (change tracking)")
+    print("     • validation_results (data quality)")
+    print("     • gl_metadata (extended GL info)")
+    print("     • assignment_details (responsibility tracking)")
+    print("     • review_sessions (workflow state)")
+    print("     • user_feedback (observations)")
+    print("     • query_library (standardized queries)")
 
 
 def add_supporting_document(
@@ -194,13 +193,18 @@ def add_comment(gl_code: str, period: str, user: str, text: str):
     )
 
 
-def log_audit_event(
+def log_gl_audit_event(
     gl_code: str,
     action: str,
     actor: Dict[str, str],
     details: Optional[Dict[str, Any]] = None
 ):
-    """Log an audit event."""
+    """Log an audit event scoped to a specific GL code.
+
+    Note: Prefer log_audit_event(event_type=..., entity=..., period=..., **metadata)
+    for system-wide events. This function is retained for backward compatibility
+    with GL-scoped audit trails.
+    """
     collection = get_audit_trail_collection()
     
     event = {
@@ -602,41 +606,44 @@ def get_most_used_templates(limit: int = 20) -> List[Dict]:
 # Data Ingestion Support Functions
 # ============================================================================
 
-def save_gl_metadata(
+def save_ingestion_metadata(
     entity: str,
     period: str,
     profile: Dict[str, Any],
     fingerprint: str,
-    ingestion_result: Dict[str, Any]
+    ingestion_result: Dict[str, Any],
+    validation: Optional[Dict[str, Any]] = None
 ) -> str:
     """
-    Save GL metadata to MongoDB
-    
-    Args:
-        entity: Entity code
-        period: Period
-        profile: Data profile dictionary
-        fingerprint: File fingerprint
-        ingestion_result: Ingestion result
-        
-    Returns:
-        Inserted document ID
+    Save ingestion-level metadata in a dedicated collection to avoid conflicts
+    with per-GL metadata (gl_metadata).
+
+    Collection: ingestion_metadata
+    Key: fingerprint (unique), entity, period
+
+    Returns: inserted document id
     """
     db = get_mongo_database()
-    collection = db.gl_metadata
-    
+    collection = db["ingestion_metadata"]
+
     document = {
         "entity": entity,
         "period": period,
         "file_fingerprint": fingerprint,
         "data_profile": profile,
         "ingestion_result": ingestion_result,
+        "validation": validation if validation is not None else None,
         "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
     }
-    
-    result = collection.insert_one(document)
-    
-    return str(result.inserted_id)
+
+    # Upsert by fingerprint to avoid duplicates
+    result = collection.update_one(
+        {"file_fingerprint": fingerprint},
+        {"$set": document},
+        upsert=True,
+    )
+    return str(result.upserted_id) if result.upserted_id else "updated"
 
 
 def log_audit_event(

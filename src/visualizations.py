@@ -1,7 +1,7 @@
 """Visualization module using Plotly."""
 
-import plotly.express as px
 import pandas as pd
+import plotly.express as px
 
 
 def create_dashboard_charts(df: pd.DataFrame) -> list:
