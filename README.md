@@ -26,6 +26,8 @@ Finance teams across the Adani Group manage 1,000+ legal entities with extensive
 - **MongoDB**: Semi-structured metadata (audit trails, validation results, comments)
 - **File System**: Unstructured data (CSVs, PDFs, Parquet cache, vector embeddings)
 
+![System Architecture](docs/architecture-detailed.svg)
+
 See [Architecture.md](docs/Architecture.md) and [Storage-Architecture.md](docs/Storage-Architecture.md) for details.
 
 ---
@@ -209,6 +211,22 @@ docker exec -it finnovate-mongodb mongosh
 - [Test Strategy](docs/Test-Plan.md)
 - [6-Day Execution Plan](temp/6-Day-Execution-Plan.md)
 - [ADRs](docs/adr/)
+
+### Export docs to PDF (optional)
+
+Requires pandoc (and optionally wkhtmltopdf or xelatex):
+
+```powershell
+# Install prerequisites (optional examples)
+# choco install pandoc
+# choco install wkhtmltopdf
+
+# Export PDFs (Architecture.pdf, Storage-Architecture.pdf, Concept-Note.pdf)
+powershell -ExecutionPolicy Bypass -File .\scripts\export-docs.ps1
+
+# Remove old diagram assets to avoid confusion
+powershell -ExecutionPolicy Bypass -File .\scripts\cleanup-old-diagrams.ps1
+```
 
 ---
 

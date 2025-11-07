@@ -3,6 +3,8 @@
 ## Overview
 
 Project Aura uses a **tri-store architecture** that leverages the strengths of three different storage systems:
+
+![Architecture Overview](architecture-detailed.svg)
 1. **PostgreSQL** - Structured financial data
 2. **MongoDB** - Semi-structured metadata and audit logs
 3. **File System** - Unstructured data and binary files

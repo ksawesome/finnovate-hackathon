@@ -2,7 +2,7 @@
 
 ## High-level system diagram
 
-![System Architecture](mermaid-diagram-2025-11-03-130936.png)
+![System Architecture](architecture-detailed.svg)
 
 ## Components
 
