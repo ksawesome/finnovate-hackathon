@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLA Breach Alert</title>
+</head>
+
+<body
+    style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 40px 0;">
+                <table role="presentation"
+                    style="width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.15);">
+                    <!-- Header -->
+                    <tr>
+                        <td
+                            style="background: linear-gradient(135deg, #d62728 0%, #ff6b6b 100%); padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">
+                                🚨 URGENT: SLA BREACH ALERT
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <!-- Critical Alert Banner -->
+                            <table role="presentation"
+                                style="width: 100%; background-color: #ffebee; border-radius: 6px; border: 2px solid #f44336; margin-bottom: 25px;">
+                                <tr>
+                                    <td style="padding: 20px; text-align: center;">
+                                        <p
+                                            style="margin: 0; font-size: 18px; color: #c62828; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                                            ⚠️ IMMEDIATE ACTION REQUIRED ⚠️
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin: 0 0 20px; font-size: 16px; line-height: 1.6; color: #333333;">
+                                <strong>{{ reviewer_name }}</strong>,
+                            </p>
+
+                            <p style="margin: 0 0 25px; font-size: 16px; line-height: 1.6; color: #333333;">
+                                The review deadline for the GL account below has been <strong
+                                    style="color: #d32f2f;">exceeded by {{ days_overdue }} days</strong>. This
+                                constitutes an SLA breach and requires immediate resolution.
+                            </p>
+
+                            <!-- Overdue Counter -->
+                            <table role="presentation"
+                                style="width: 100%; background: linear-gradient(135deg, #ffcdd2 0%, #ef9a9a 100%); border-radius: 6px; margin-bottom: 25px;">
+                                <tr>
+                                    <td style="padding: 25px; text-align: center;">
+                                        <p
+                                            style="margin: 0 0 10px; font-size: 14px; color: #b71c1c; font-weight: 600; text-transform: uppercase;">
+                                            Days Overdue</p>
+                                        <p
+                                            style="margin: 0; font-size: 48px; color: #d32f2f; font-weight: 700; line-height: 1;">
+                                            {{ days_overdue }}</p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Account Details Card -->
+                            <table role="presentation"
+                                style="width: 100%; background-color: #f8f9fa; border-radius: 6px; border-left: 4px solid #d62728; margin-bottom: 25px;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h2 style="margin: 0 0 15px; font-size: 18px; color: #d62728;">
+                                            Account Information
+                                        </h2>
+
+                                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                            <tr>
+                                                <td
+                                                    style="padding: 8px 0; font-weight: 600; color: #666; width: 160px;">
+                                                    Account Code:</td>
+                                                <td style="padding: 8px 0; color: #333; font-weight: 600;">{{
+                                                    account_code }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; font-weight: 600; color: #666;">Entity:</td>
+                                                <td style="padding: 8px 0; color: #333;">{{ entity }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; font-weight: 600; color: #666;">Assigned
+                                                    Reviewer:</td>
+                                                <td style="padding: 8px 0; color: #333;">{{ reviewer_name }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; font-weight: 600; color: #666;">Original
+                                                    Deadline:</td>
+                                                <td style="padding: 8px 0; color: #d32f2f; font-weight: 600;">{{
+                                                    deadline | date }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; font-weight: 600; color: #666;">Escalation
+                                                    Level:</td>
+                                                <td style="padding: 8px 0;">
+                                                    <span
+                                                        style="display: inline-block; padding: 4px 12px; background-color: {% if escalation_level == 'critical' %}#d32f2f{% elif escalation_level == 'high' %}#ff6b6b{% else %}#ff9800{% endif %}; color: white; border-radius: 12px; font-weight: 600; text-transform: uppercase;">
+                                                        {{ escalation_level | capitalize_words }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Impact Notice -->
+                            <div
+                                style="background-color: #fff3e0; border-radius: 6px; padding: 20px; margin-bottom: 25px; border-left: 4px solid #ff9800;">
+                                <h3 style="margin: 0 0 10px; font-size: 16px; color: #e65100;">
+                                    📢 Impact & Consequences
+                                </h3>
+                                <ul style="margin: 0; padding-left: 20px; color: #333;">
+                                    <li style="margin-bottom: 8px;">Management has been notified of this breach</li>
+                                    <li style="margin-bottom: 8px;">Review metrics and KPIs are negatively impacted</li>
+                                    <li style="margin-bottom: 8px;">Delayed financial reporting and consolidation</li>
+                                    <li>Potential compliance and audit implications</li>
+                                </ul>
+                            </div>
+
+                            <!-- Escalation Notice -->
+                            {% if escalation_level == 'critical' %}
+                            <div
+                                style="background-color: #ffebee; border-radius: 6px; padding: 20px; margin-bottom: 25px; border: 2px solid #d32f2f;">
+                                <h3 style="margin: 0 0 10px; font-size: 16px; color: #b71c1c;">
+                                    🔴 CRITICAL ESCALATION
+                                </h3>
+                                <p
+                                    style="margin: 0; font-size: 14px; line-height: 1.6; color: #c62828; font-weight: 600;">
+                                    This breach has been escalated to senior management and the CFO office. Immediate
+                                    resolution is mandatory.
+                                </p>
+                            </div>
+                            {% endif %}
+
+                            <!-- Immediate Action Required -->
+                            <div
+                                style="background-color: #e3f2fd; border-radius: 6px; padding: 20px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+                                <h3 style="margin: 0 0 10px; font-size: 16px; color: #1565c0;">
+                                    ⚡ Immediate Action Required
+                                </h3>
+                                <ol style="margin: 0; padding-left: 20px; color: #333;">
+                                    <li style="margin-bottom: 8px;"><strong>Complete review immediately</strong> -
+                                        Access the account and finish the review process</li>
+                                    <li style="margin-bottom: 8px;"><strong>Upload all supporting documents</strong> -
+                                        Ensure complete documentation</li>
+                                    <li style="margin-bottom: 8px;"><strong>Submit for approval</strong> - Route to
+                                        approver as soon as review is complete</li>
+                                    <li><strong>Contact your manager</strong> - Explain the delay and provide resolution
+                                        timeline</li>
+                                </ol>
+                            </div>
+
+                            <!-- CTA Buttons -->
+                            <table role="presentation" style="width: 100%; margin-bottom: 20px;">
+                                <tr>
+                                    <td style="text-align: center; padding: 10px 0;">
+                                        <a href="#"
+                                            style="display: inline-block; padding: 14px 50px; background-color: #d62728; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">
+                                            Complete Review Now
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="text-align: center; padding: 10px 0;">
+                                        <a href="#"
+                                            style="display: inline-block; padding: 10px 30px; background-color: #666; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px;">
+                                            Contact Support Team
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p
+                                style="margin: 20px 0 0; font-size: 12px; line-height: 1.6; color: #999; text-align: center; font-style: italic;">
+                                This is an automated escalation alert. Your cooperation is essential for maintaining
+                                compliance and operational excellence.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td
+                            style="background-color: #f8f9fa; padding: 20px 30px; border-radius: 0 0 8px 8px; border-top: 1px solid #e9ecef;">
+                            <p style="margin: 0 0 10px; font-size: 12px; color: #666; text-align: center;">
+                                This is an automated critical alert from <strong>{{ app_name }}</strong>
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #999; text-align: center;">
+                                © {{ current_year }} Adani Group. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

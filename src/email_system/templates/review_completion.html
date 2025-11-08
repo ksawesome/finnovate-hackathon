@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Completion Notification</title>
+</head>
+
+<body
+    style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 40px 0;">
+                <table role="presentation"
+                    style="width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td
+                            style="background: linear-gradient(135deg, #2ca02c 0%, #66bb6a 100%); padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">
+                                ✅ Review Completed Successfully
+                            </h1>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <!-- Success Icon -->
+                            <div style="text-align: center; margin-bottom: 25px;">
+                                <div
+                                    style="display: inline-block; width: 80px; height: 80px; background-color: #e8f5e9; border-radius: 50%; line-height: 80px; font-size: 40px;">
+                                    ✓
+                                </div>
+                            </div>
+
+                            <p
+                                style="margin: 0 0 25px; font-size: 16px; line-height: 1.6; color: #333333; text-align: center;">
+                                Great job! <strong>{{ reviewer_name }}</strong> has completed the review for the GL
+                                account below.
+                            </p>
+
+                            <!-- Account Details Card -->
+                            <table role="presentation"
+                                style="width: 100%; background-color: #f8f9fa; border-radius: 6px; border-left: 4px solid #2ca02c; margin-bottom: 25px;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h2 style="margin: 0 0 15px; font-size: 18px; color: #2ca02c;">
+                                            Review Summary
+                                        </h2>
+
+                                        <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                            <tr>
+                                                <td
+                                                    style="padding: 8px 0; font-weight: 600; color: #666; width: 160px;">
+                                                    Account Code:</td>
+                                                <td style="padding: 8px 0; color: #333;">{{ account_code }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; font-weight: 600; color: #666;">Account Name:
+                                                </td>
+                                                <td style="padding: 8px 0; color: #333;">{{ account_name }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; font-weight: 600; color: #666;">Reviewed By:
+                                                </td>
+                                                <td style="padding: 8px 0; color: #333;">{{ reviewer_name }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; font-weight: 600; color: #666;">Completion
+                                                    Date:</td>
+                                                <td style="padding: 8px 0; color: #333;">{{ completion_date | date }}
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; font-weight: 600; color: #666;">Hygiene
+                                                    Score:</td>
+                                                <td style="padding: 8px 0;">
+                                                    <span
+                                                        style="display: inline-block; padding: 4px 12px; background-color: {% if hygiene_score >= 80 %}#4caf50{% elif hygiene_score >= 60 %}#ff9800{% else %}#f44336{% endif %}; color: white; border-radius: 12px; font-weight: 600;">
+                                                        {{ hygiene_score }}/100
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Comments Section -->
+                            {% if comments %}
+                            <div
+                                style="background-color: #e3f2fd; border-radius: 6px; padding: 20px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+                                <h3 style="margin: 0 0 10px; font-size: 16px; color: #1976d2;">
+                                    💬 Reviewer Comments
+                                </h3>
+                                <p
+                                    style="margin: 0; font-size: 14px; line-height: 1.6; color: #333; font-style: italic;">
+                                    "{{ comments }}"
+                                </p>
+                            </div>
+                            {% endif %}
+
+                            <!-- Next Steps -->
+                            <div
+                                style="background-color: #fff3e0; border-radius: 6px; padding: 20px; margin-bottom: 25px; border-left: 4px solid #ff9800;">
+                                <h3 style="margin: 0 0 10px; font-size: 16px; color: #f57c00;">
+                                    📌 Next Steps
+                                </h3>
+                                <ul style="margin: 0; padding-left: 20px; color: #333;">
+                                    <li style="margin-bottom: 8px;">Review is pending approval from designated approver
+                                    </li>
+                                    <li style="margin-bottom: 8px;">Approver will be notified automatically</li>
+                                    <li>Track approval status in the dashboard</li>
+                                </ul>
+                            </div>
+
+                            <!-- CTA Button -->
+                            <table role="presentation" style="width: 100%; margin-bottom: 20px;">
+                                <tr>
+                                    <td style="text-align: center; padding: 10px 0;">
+                                        <a href="#"
+                                            style="display: inline-block; padding: 12px 40px; background-color: #2ca02c; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                                            View Review Details
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p
+                                style="margin: 20px 0 0; font-size: 14px; line-height: 1.6; color: #666; text-align: center;">
+                                Questions? Contact the finance team anytime.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td
+                            style="background-color: #f8f9fa; padding: 20px 30px; border-radius: 0 0 8px 8px; border-top: 1px solid #e9ecef;">
+                            <p style="margin: 0 0 10px; font-size: 12px; color: #666; text-align: center;">
+                                This is an automated notification from <strong>{{ app_name }}</strong>
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #999; text-align: center;">
+                                © {{ current_year }} Adani Group. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

@@ -44,8 +44,40 @@ See [Architecture.md](docs/Architecture.md) and [Storage-Architecture.md](docs/S
 | **Agent** | LangChain, OpenAI |
 | **Data Quality** | Great Expectations |
 | **Visualization** | Plotly |
+| **AI/RAG** | LangChain, Gemini 1.5 Flash, ChromaDB, sentence-transformers |
 | **Infrastructure** | Docker Compose |
 | **CI/CD** | GitHub Actions, pre-commit |
+
+---
+
+## ✨ Key Features (New in Phase 2!)
+
+### 🤖 AI Assistant with RAG
+- **1,358 documents** indexed for semantic search
+- **Conversational AI** powered by Gemini 1.5 Flash
+- **4 structured tools**: Knowledge base, Account lookup, Analytics, Assignments
+- **Dual modes**: Agent (multi-tool) and RAG-only (direct search)
+- **Source citations** with relevance scoring
+- **<500ms** search latency
+
+Quick start: See [RAG-Quick-Start.md](docs/RAG-Quick-Start.md)
+
+### 📊 Interactive Dashboards
+- 5 dashboard types: Overview, Financial, Review, Quality, Risk
+- Real-time data from PostgreSQL and MongoDB
+- Drill-down capabilities with filters
+- Export to CSV/Excel
+
+### 📄 Automated Reports
+- Executive summary with hygiene scores
+- Variance analysis by entity/period
+- SLA compliance tracking
+- Multi-period comparison
+
+### 🔄 ML Learning Loop
+- Feedback collection UI
+- Automated model retraining with MLflow
+- Performance tracking and versioning
 
 ---
 

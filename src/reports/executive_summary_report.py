@@ -50,9 +50,12 @@ class ExecutiveSummaryReport(BaseReport):
         self.generated_files["markdown"] = str(markdown_path)
 
         # Generate PNG charts
-        if "hygiene_score" in data and not data["hygiene_score"].get("error"):
-            png_path = self._generate_png(data)
-            self.generated_files["png"] = str(png_path)
+        hygiene_data = data.get("hygiene_score", {})
+        if hygiene_data and isinstance(hygiene_data, dict) and not hygiene_data.get("error"):
+            # Only generate PNG if we have valid hygiene data
+            if "components" in hygiene_data and isinstance(hygiene_data["components"], dict):
+                png_path = self._generate_png(data)
+                self.generated_files["png"] = str(png_path)
 
         return self.generated_files
 
@@ -150,38 +153,53 @@ class ExecutiveSummaryReport(BaseReport):
             doc.build(elements)
             return output_path
 
-        # Key Metrics Cards (3x2 grid)
+        # Key Metrics Cards (3x2 grid) - Enhanced with better formatting
         elements.append(Paragraph("Key Performance Indicators", section_style))
 
         analytics = data.get("analytics", {})
         hygiene_score = data.get("hygiene_score", {})
         review_status = data.get("review_status", {})
 
-        metrics_data = [
+        # Create KPI table with labels and values in separate rows for better readability
+        metrics_table_data = [
             [
-                self._create_metric_cell(
-                    "Total Balance", f"₹{analytics.get('total_balance', 0):,.0f}"
-                ),
-                self._create_metric_cell("Account Count", str(analytics.get("account_count", 0))),
-                self._create_metric_cell(
-                    "Hygiene Score", f"{hygiene_score.get('overall_score', 0):.0f}%"
-                ),
+                Paragraph("<b>Total Balance</b>", body_style),
+                Paragraph("<b>Account Count</b>", body_style),
+                Paragraph("<b>Hygiene Score</b>", body_style),
             ],
             [
-                self._create_metric_cell(
-                    "Completion Rate", f"{review_status.get('overall_completion_rate', 0):.0f}%"
+                Paragraph(
+                    f"<font size=14><b>₹{analytics.get('total_balance', 0):,.0f}</b></font>",
+                    body_style,
                 ),
-                self._create_metric_cell(
-                    "Pending Reviews", str(review_status.get("pending_count", 0))
+                Paragraph(
+                    f"<font size=14><b>{analytics.get('account_count', 0)}</b></font>", body_style
                 ),
-                self._create_metric_cell("Flagged Items", str(analytics.get("flagged_count", 0))),
+                Paragraph(
+                    f"<font size=14><b>{hygiene_score.get('overall_score', 0):.0f}%</b></font>",
+                    body_style,
+                ),
+            ],
+            ["", "", ""],  # Spacer row
+            [
+                Paragraph("<b>Completion Rate</b>", body_style),
+                Paragraph("<b>Pending Reviews</b>", body_style),
+                Paragraph("<b>Flagged Items</b>", body_style),
+            ],
+            [
+                Paragraph(
+                    f"<font size=14><b>{review_status.get('overall_completion_rate', 0):.0f}%</b></font>",
+                    body_style,
+                ),
+                Paragraph(
+                    f"<font size=14><b>{review_status.get('pending_count', 0)}</b></font>",
+                    body_style,
+                ),
+                Paragraph(
+                    f"<font size=14><b>{analytics.get('flagged_count', 0)}</b></font>", body_style
+                ),
             ],
         ]
-
-        # Flatten for table
-        metrics_table_data = []
-        for row in metrics_data:
-            metrics_table_data.append(row)
 
         metrics_table = Table(metrics_table_data, colWidths=[2.2 * inch, 2.2 * inch, 2.2 * inch])
         metrics_table.setStyle(
@@ -189,69 +207,128 @@ class ExecutiveSummaryReport(BaseReport):
                 [
                     ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                    ("GRID", (0, 0), (-1, -1), 1.5, colors.HexColor("#bdc3c7")),
-                    ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#ecf0f1")),
+                    ("GRID", (0, 0), (2, 1), 1.5, colors.HexColor("#3498db")),
+                    ("GRID", (0, 3), (2, 4), 1.5, colors.HexColor("#3498db")),
+                    ("BACKGROUND", (0, 0), (2, 0), colors.HexColor("#ecf0f1")),
+                    ("BACKGROUND", (0, 1), (2, 1), colors.white),
+                    ("BACKGROUND", (0, 3), (2, 3), colors.HexColor("#ecf0f1")),
+                    ("BACKGROUND", (0, 4), (2, 4), colors.white),
                     ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 8),
-                    ("TOPPADDING", (0, 0), (-1, -1), 6),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ("FONTSIZE", (0, 0), (-1, -1), 9),
+                    ("TOPPADDING", (0, 0), (-1, -1), 8),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                    ("SPAN", (0, 2), (2, 2)),  # Spacer row spans all columns
                 ]
             )
         )
 
         elements.append(metrics_table)
-        elements.append(Spacer(1, 0.12 * inch))
+        elements.append(Spacer(1, 0.15 * inch))
 
         # Executive Summary Section (from insights)
         exec_summary = data.get("executive_summary", {})
 
-        # Highlights
+        # Highlights with green background
         elements.append(Paragraph("Key Highlights", section_style))
         highlights = exec_summary.get("highlights", [])
         if highlights:
+            highlight_items = []
             for highlight in highlights[:4]:  # Top 4 highlights
-                elements.append(Paragraph(f"✓ {highlight}", body_style))
+                highlight_items.append(
+                    [Paragraph(f"<font color='#27ae60'>✓</font> {highlight}", body_style)]
+                )
+
+            highlight_table = Table(highlight_items, colWidths=[6.5 * inch])
+            highlight_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#e8f8f5")),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                        ("TOPPADDING", (0, 0), (-1, -1), 6),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ]
+                )
+            )
+            elements.append(highlight_table)
         else:
             elements.append(Paragraph("No highlights available.", body_style))
 
-        elements.append(Spacer(1, 0.1 * inch))
+        elements.append(Spacer(1, 0.12 * inch))
 
-        # Concerns
+        # Concerns with yellow/orange background
         elements.append(Paragraph("Areas of Concern", section_style))
         concerns = exec_summary.get("concerns", [])
         if concerns:
+            concern_items = []
             for concern in concerns[:4]:  # Top 4 concerns
-                elements.append(Paragraph(f"⚠ {concern}", body_style))
+                concern_items.append(
+                    [Paragraph(f"<font color='#e67e22'>⚠</font> {concern}", body_style)]
+                )
+
+            concern_table = Table(concern_items, colWidths=[6.5 * inch])
+            concern_table.setStyle(
+                TableStyle(
+                    [
+                        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fff3cd")),
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                        ("TOPPADDING", (0, 0), (-1, -1), 6),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ]
+                )
+            )
+            elements.append(concern_table)
         else:
             elements.append(Paragraph("✓ No major concerns identified.", body_style))
 
-        elements.append(Spacer(1, 0.1 * inch))
+        elements.append(Spacer(1, 0.12 * inch))
 
-        # Strategic Recommendations (from insights)
+        # Strategic Recommendations (from insights) with colored priority
         elements.append(Paragraph("Strategic Recommendations", section_style))
 
-        insights = data.get("insights", {})
-        recommendations = insights.get("recommendations", [])
+        insights_list = data.get("insights", [])
 
-        if recommendations:
-            for rec in recommendations[:5]:  # Top 5 recommendations
-                priority = rec.get("priority", "Medium")
-                action = rec.get("action", "N/A")
+        # insights is a list of dicts, extract actions
+        if insights_list and isinstance(insights_list, list):
+            rec_items = []
+            for insight in insights_list[:5]:  # Top 5 insights
+                priority = insight.get("priority", "medium").capitalize()
+                action = insight.get("action", insight.get("message", "N/A"))
 
-                if priority == "High":
+                if priority.lower() in ["critical", "high"]:
+                    bg_color = colors.HexColor("#ffe6e6")
                     priority_marker = "🔴"
-                elif priority == "Medium":
+                elif priority.lower() == "medium":
+                    bg_color = colors.HexColor("#fff9e6")
                     priority_marker = "⚠"
                 else:
+                    bg_color = colors.HexColor("#e6f7ff")
                     priority_marker = "•"
 
-                elements.append(
-                    Paragraph(f"{priority_marker} <b>[{priority}]</b> {action}", body_style)
+                rec_items.append(
+                    [Paragraph(f"{priority_marker} <b>[{priority}]</b> {action}", body_style)]
                 )
+
+            rec_table = Table(rec_items, colWidths=[6.5 * inch])
+            rec_table.setStyle(
+                TableStyle(
+                    [
+                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                        ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                        ("TOPPADDING", (0, 0), (-1, -1), 6),
+                        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                    ]
+                )
+            )
+            elements.append(rec_table)
         else:
             elements.append(Paragraph("Continue current practices.", body_style))
 
-        elements.append(Spacer(1, 0.1 * inch))
+        elements.append(Spacer(1, 0.12 * inch))
 
         # Status Summary Table (compact)
         elements.append(Paragraph("Status Breakdown", section_style))
@@ -384,17 +461,16 @@ class ExecutiveSummaryReport(BaseReport):
         lines.append("## Strategic Recommendations")
         lines.append("")
 
-        insights = data.get("insights", {})
-        recommendations = insights.get("recommendations", [])
+        insights_list = data.get("insights", [])
 
-        if recommendations:
-            for rec in recommendations:
-                priority = rec.get("priority", "Medium")
-                action = rec.get("action", "N/A")
+        if insights_list and isinstance(insights_list, list):
+            for insight in insights_list:
+                priority = insight.get("priority", "medium").capitalize()
+                action = insight.get("action", insight.get("message", "N/A"))
 
-                if priority == "High":
+                if priority.lower() in ["critical", "high"]:
                     priority_icon = "🔴"
-                elif priority == "Medium":
+                elif priority.lower() == "medium":
                     priority_icon = "⚠️"
                 else:
                     priority_icon = "•"
@@ -429,11 +505,10 @@ class ExecutiveSummaryReport(BaseReport):
     def _generate_png(self, data: dict) -> Path:
         """Generate PNG executive dashboard chart."""
         hygiene_score = data.get("hygiene_score", {})
-        overall_score = hygiene_score.get("overall_score", 0)
 
-        # Create gauge chart
+        # Create gauge chart - pass the whole hygiene_score dict which includes components
         fig = create_hygiene_gauge(
-            overall_score, f"GL Hygiene Score - {data['entity']} ({data['period']})"
+            hygiene_score, title=f"GL Hygiene Score - {data['entity']} ({data['period']})"
         )
 
         output_path = self._get_output_path("png", suffix="dashboard")

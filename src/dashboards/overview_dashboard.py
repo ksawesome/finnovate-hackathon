@@ -453,33 +453,48 @@ def render_activity_timeline(activities: list[dict]):
 
 def render_insights_cards(insights: list[dict]):
     """Render proactive insight cards."""
-    if not insights or "recommendations" not in insights:
+    if not insights:
         st.info("No insights available at this time.")
         return
 
-    recommendations = insights.get("recommendations", [])[:3]  # Top 3
-
-    for rec in recommendations:
-        priority = rec.get("priority", "Medium")
+    # insights is already a list of insight dicts from generate_proactive_insights()
+    # Take top 3 insights
+    for rec in insights[:3]:
+        priority = rec.get("priority", "medium").capitalize()
+        title = rec.get("title", "Insight")
+        message = rec.get("message", "")
         action = rec.get("action", "No action specified")
-        category = rec.get("category", "General")
+        insight_type = rec.get("type", "general")
 
         # Priority color
-        priority_colors = {"High": "#e74c3c", "Medium": "#f39c12", "Low": "#3498db"}
+        priority_colors = {
+            "Critical": "#e74c3c",
+            "High": "#e74c3c",
+            "Medium": "#f39c12",
+            "Info": "#3498db",
+            "Low": "#3498db",
+        }
         color = priority_colors.get(priority, "#95a5a6")
 
         # Priority icon
-        priority_icons = {"High": "🔴", "Medium": "⚠️", "Low": "💡"}
+        priority_icons = {
+            "Critical": "🔴",
+            "High": "🔴",
+            "Medium": "⚠️",
+            "Info": "💡",
+            "Low": "💡",
+        }
         icon = priority_icons.get(priority, "•")
 
         st.markdown(
             f"""
         <div style="background-color: #f0f2f6; padding: 0.75rem; border-radius: 0.3rem; margin-bottom: 0.5rem; border-left: 4px solid {color};">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span><b>{icon} {priority} Priority</b></span>
-                <span style="font-size: 0.8rem; color: #7f8c8d;">{category}</span>
+                <span><b>{icon} {title}</b></span>
+                <span style="font-size: 0.8rem; color: #7f8c8d;">{priority} Priority</span>
             </div>
-            <p style="margin-top: 0.5rem; margin-bottom: 0;">{action}</p>
+            <p style="margin-top: 0.5rem; margin-bottom: 0.25rem; font-size: 0.9rem;">{message}</p>
+            <p style="margin: 0; font-size: 0.85rem; color: #16a085;"><b>Action:</b> {action}</p>
         </div>
         """,
             unsafe_allow_html=True,

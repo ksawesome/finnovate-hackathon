@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/Anurag/Desktop/Github/finnovate-hackathon/mlruns/744108866326261403/7c0eed34e05b4c448818a35ea844e526/artifacts
+end_time: 1762568949544
+entry_point_name: ''
+experiment_id: '744108866326261403'
+lifecycle_stage: active
+run_id: 7c0eed34e05b4c448818a35ea844e526
+run_name: attention_classifier
+run_uuid: 7c0eed34e05b4c448818a35ea844e526
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1762568946381
+status: 3
+tags: []
+user_id: Anurag

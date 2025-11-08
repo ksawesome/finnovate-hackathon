@@ -7,12 +7,13 @@ from .db.postgres import get_gl_accounts_by_period
 from .db.storage import load_processed_parquet, save_processed_parquet
 
 
-def perform_analytics(period: str) -> dict:
+def perform_analytics(entity: str, period: str) -> dict:
     """
-    Perform analytics on trial balance data for a period.
+    Perform analytics on trial balance data for an entity and period.
 
     Args:
-        period: Period to analyze (e.g., "2025-01").
+        entity: Entity code to analyze (e.g., "AEML").
+        period: Period to analyze (e.g., "Mar-24").
 
     Returns:
         dict: Analytics results.
@@ -22,6 +23,12 @@ def perform_analytics(period: str) -> dict:
 
     if not gl_accounts:
         return {"error": f"No data for period {period}"}
+
+    # Filter by entity
+    gl_accounts = [acc for acc in gl_accounts if acc.entity == entity]
+
+    if not gl_accounts:
+        return {"error": f"No data for entity {entity} in period {period}"}
 
     # Convert to DataFrame
     data = [
@@ -42,22 +49,30 @@ def perform_analytics(period: str) -> dict:
     mean_balance = df["balance"].mean()
     pending_reviews = len(df[df["review_status"] == "pending"])
     approved_reviews = len(df[df["review_status"] == "approved"])
+    flagged_reviews = len(df[df["review_status"] == "flagged"])
+
+    # Status distribution
+    by_status = df["review_status"].value_counts().to_dict()
 
     # Group by entity
     entity_summary = df.groupby("entity")["balance"].agg(["sum", "count", "mean"]).to_dict()
 
     results = {
         "period": period,
+        "entity": entity,
         "total_balance": total_balance,
         "mean_balance": mean_balance,
+        "account_count": len(df),
         "total_accounts": len(df),
         "pending_reviews": pending_reviews,
         "approved_reviews": approved_reviews,
+        "flagged_count": flagged_reviews,
+        "by_status": by_status,
         "entity_summary": entity_summary,
     }
 
     # Cache results
-    save_processed_parquet(df, f"analytics_{period}")
+    save_processed_parquet(df, f"analytics_{entity}_{period}")
 
     return results
 
@@ -122,7 +137,7 @@ def calculate_variance_analysis(entity: str, current_period: str, previous_perio
                     "account_code": acc.account_code,
                     "account_name": acc.account_name,
                     "balance": float(acc.balance),
-                    "category": acc.category,
+                    "category": acc.account_category,
                     "department": acc.department,
                 }
                 for acc in current_accounts
@@ -136,7 +151,7 @@ def calculate_variance_analysis(entity: str, current_period: str, previous_perio
                     "account_code": acc.account_code,
                     "account_name": acc.account_name,
                     "balance": float(acc.balance),
-                    "category": acc.category,
+                    "category": acc.account_category,
                     "department": acc.department,
                 }
                 for acc in previous_accounts
@@ -225,7 +240,7 @@ def calculate_review_status_summary(entity: str, period: str) -> dict:
                     "balance": float(acc.balance),
                     "review_status": acc.review_status or "Pending",
                     "criticality": acc.criticality or "Medium",
-                    "category": acc.category,
+                    "category": acc.account_category,
                     "department": acc.department,
                 }
                 for acc in accounts
@@ -236,12 +251,13 @@ def calculate_review_status_summary(entity: str, period: str) -> dict:
         if df.empty:
             return {"entity": entity, "period": period, "error": "No data found"}
 
-        # Overall status counts
+        # Overall status counts (case-insensitive)
+        df["review_status_lower"] = df["review_status"].str.lower()
         status_counts = df["review_status"].value_counts().to_dict()
         total = len(df)
-        reviewed = status_counts.get("Reviewed", 0) + status_counts.get("Approved", 0)
-        pending = status_counts.get("Pending", 0)
-        flagged = status_counts.get("Flagged", 0)
+        reviewed = sum(df["review_status_lower"].isin(["reviewed", "approved"]))
+        pending = sum(df["review_status_lower"] == "pending")
+        flagged = sum(df["review_status_lower"] == "flagged")
 
         # By criticality
         criticality_summary = (
@@ -267,6 +283,8 @@ def calculate_review_status_summary(entity: str, period: str) -> dict:
             .to_dict("index")
         )
 
+        completion_rate = (reviewed / total * 100) if total > 0 else 0
+
         return {
             "entity": entity,
             "period": period,
@@ -275,8 +293,11 @@ def calculate_review_status_summary(entity: str, period: str) -> dict:
                 "reviewed": reviewed,
                 "pending": pending,
                 "flagged": flagged,
-                "completion_pct": (reviewed / total * 100) if total > 0 else 0,
+                "completion_pct": completion_rate,
             },
+            "overall_completion_rate": completion_rate,  # Also at top level for compatibility
+            "pending_count": pending,
+            "reviewed_count": reviewed,
             "by_criticality": criticality_summary,
             "by_category": category_summary,
             "by_department": department_summary,
@@ -505,7 +526,7 @@ def identify_anomalies_ml(entity: str, period: str, threshold: float = 2.0) -> d
                     "account_code": acc.account_code,
                     "account_name": acc.account_name,
                     "balance": float(acc.balance),
-                    "category": acc.category,
+                    "category": acc.account_category,
                     "department": acc.department,
                 }
                 for acc in entity_accounts

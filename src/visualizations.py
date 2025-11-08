@@ -234,7 +234,7 @@ def create_hygiene_gauge(
         height=400,
         margin=dict(l=30, r=30, t=80, b=30),
         paper_bgcolor="white",
-        font={"color": "#2c3e50"},
+        font={"color": "#1b1f23"},
     )
 
     # Add component breakdown annotation if provided

@@ -71,7 +71,12 @@ def render_risk_dashboard(filters: dict):
 
     st.markdown("---")
 
-    # Row 5: Outlier Detection & Risk Actions
+    # Row 5: ML Predictions & Feedback
+    render_ml_feedback_section(filters, data["anomaly_data"])
+
+    st.markdown("---")
+
+    # Row 6: Outlier Detection & Risk Actions
     col1, col2 = st.columns([2, 1])
 
     with col1:
@@ -505,6 +510,210 @@ def render_outlier_analysis(outliers: list[dict]):
         """,
             unsafe_allow_html=True,
         )
+
+
+def render_ml_feedback_section(filters: dict, anomaly_data: list[dict]):
+    """Render ML predictions feedback section."""
+    st.subheader("🤖 ML Predictions & Feedback")
+    st.markdown("Help improve our AI by providing feedback on predictions")
+
+    try:
+        from src.feedback_handler import MLFeedbackCollector
+
+        collector = MLFeedbackCollector()
+
+        # Show feedback statistics
+        stats = collector.get_feedback_stats()
+
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Total Feedback", stats.get("total_feedback", 0))
+        col2.metric("Accuracy Rate", f"{stats.get('accuracy_rate', 0):.1f}%")
+        col3.metric("Corrections", stats.get("incorrect", 0))
+        col4.metric("Uncertain", stats.get("uncertain", 0))
+
+        st.markdown("---")
+
+        # Sample predictions for top anomalies
+        if anomaly_data and len(anomaly_data) > 0:
+            st.markdown("##### 🎯 Review ML Predictions")
+
+            # Show top 5 anomalies with predictions
+            top_anomalies = sorted(
+                anomaly_data, key=lambda x: x.get("anomaly_score", 0), reverse=True
+            )[:5]
+
+            for idx, anomaly in enumerate(top_anomalies):
+                account_code = anomaly.get("account_code", "N/A")
+                account_name = anomaly.get("account_name", "N/A")
+                anomaly_score = anomaly.get("anomaly_score", 0)
+
+                with st.expander(
+                    f"📊 {account_code} - {account_name} (Score: {anomaly_score:.2f})"
+                ):
+                    # Display predictions
+                    pred_col1, pred_col2, pred_col3 = st.columns(3)
+
+                    # Mock predictions (in real app, load from ML model)
+                    pred_anomaly = anomaly_score
+                    pred_priority = min(anomaly_score * 10, 10)
+                    pred_attention = 1 if anomaly_score > 0.7 else 0
+
+                    pred_col1.metric("Anomaly Score", f"{pred_anomaly:.2f}")
+                    pred_col2.metric("Priority Score", f"{pred_priority:.1f}/10")
+                    pred_col3.metric("Needs Attention", "Yes" if pred_attention else "No")
+
+                    st.markdown(f"**Balance:** ₹{anomaly.get('balance', 0):,.0f}")
+
+                    # Feedback section
+                    st.markdown("---")
+                    st.markdown("**Was this prediction helpful?**")
+
+                    feedback_col1, feedback_col2, feedback_col3 = st.columns(3)
+
+                    # Use unique keys for each button
+                    key_prefix = f"fb_{idx}_{account_code}"
+
+                    with feedback_col1:
+                        if st.button("✅ Correct", key=f"{key_prefix}_correct"):
+                            feedback_id = collector.collect_prediction_feedback(
+                                account_code=account_code,
+                                prediction_type="anomaly",
+                                predicted_value=pred_anomaly,
+                                feedback_type="correct",
+                                user_id=st.session_state.get("user_email", "demo_user@example.com"),
+                                period=filters["period"],
+                                entity=filters["entity"],
+                            )
+                            st.success("✅ Thank you! Feedback recorded.")
+
+                    with feedback_col2:
+                        if st.button("❌ Incorrect", key=f"{key_prefix}_incorrect"):
+                            st.session_state[f"{key_prefix}_show_correction"] = True
+                            st.rerun()
+
+                    with feedback_col3:
+                        if st.button("❓ Uncertain", key=f"{key_prefix}_uncertain"):
+                            feedback_id = collector.collect_prediction_feedback(
+                                account_code=account_code,
+                                prediction_type="anomaly",
+                                predicted_value=pred_anomaly,
+                                feedback_type="uncertain",
+                                user_id=st.session_state.get("user_email", "demo_user@example.com"),
+                                period=filters["period"],
+                                entity=filters["entity"],
+                            )
+                            st.info("📝 Feedback recorded as uncertain.")
+
+                    # Show correction input if needed
+                    if st.session_state.get(f"{key_prefix}_show_correction", False):
+                        st.markdown("---")
+                        st.markdown("**Provide Correction:**")
+
+                        correction_col1, correction_col2 = st.columns(2)
+
+                        with correction_col1:
+                            actual_anomaly = st.number_input(
+                                "Actual Anomaly Score (0-1)",
+                                min_value=0.0,
+                                max_value=1.0,
+                                value=0.0,
+                                step=0.1,
+                                key=f"{key_prefix}_actual_anomaly",
+                            )
+
+                        with correction_col2:
+                            actual_priority = st.number_input(
+                                "Actual Priority (0-10)",
+                                min_value=0.0,
+                                max_value=10.0,
+                                value=5.0,
+                                step=0.5,
+                                key=f"{key_prefix}_actual_priority",
+                            )
+
+                        comments = st.text_area(
+                            "Comments (optional)",
+                            placeholder="Why was the prediction incorrect?",
+                            key=f"{key_prefix}_comments",
+                        )
+
+                        submit_col1, submit_col2 = st.columns([1, 5])
+
+                        with submit_col1:
+                            if st.button("Submit", key=f"{key_prefix}_submit"):
+                                # Collect feedback for anomaly
+                                collector.collect_prediction_feedback(
+                                    account_code=account_code,
+                                    prediction_type="anomaly",
+                                    predicted_value=pred_anomaly,
+                                    actual_value=actual_anomaly,
+                                    feedback_type="incorrect",
+                                    user_id=st.session_state.get(
+                                        "user_email", "demo_user@example.com"
+                                    ),
+                                    comments=comments,
+                                    period=filters["period"],
+                                    entity=filters["entity"],
+                                )
+
+                                # Collect feedback for priority
+                                collector.collect_prediction_feedback(
+                                    account_code=account_code,
+                                    prediction_type="priority",
+                                    predicted_value=pred_priority,
+                                    actual_value=actual_priority,
+                                    feedback_type="incorrect",
+                                    user_id=st.session_state.get(
+                                        "user_email", "demo_user@example.com"
+                                    ),
+                                    comments=comments,
+                                    period=filters["period"],
+                                    entity=filters["entity"],
+                                )
+
+                                st.success(
+                                    "✅ Corrections submitted! Thank you for helping improve our AI."
+                                )
+                                st.session_state[f"{key_prefix}_show_correction"] = False
+                                st.rerun()
+
+                        with submit_col2:
+                            if st.button("Cancel", key=f"{key_prefix}_cancel"):
+                                st.session_state[f"{key_prefix}_show_correction"] = False
+                                st.rerun()
+
+            st.markdown("---")
+            st.markdown("##### 📈 Recent Feedback History")
+
+            # Show recent feedback
+            recent_feedback = collector.get_recent_feedback(limit=10)
+
+            if recent_feedback:
+                feedback_df = pd.DataFrame(recent_feedback)
+                display_cols = [
+                    "account_code",
+                    "prediction_type",
+                    "feedback_type",
+                    "predicted_value",
+                    "actual_value",
+                    "timestamp",
+                ]
+                available_cols = [col for col in display_cols if col in feedback_df.columns]
+
+                st.dataframe(
+                    feedback_df[available_cols].sort_values("timestamp", ascending=False),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            else:
+                st.info("No feedback history yet. Be the first to provide feedback!")
+        else:
+            st.info("No anomalies detected to provide feedback on.")
+
+    except ImportError:
+        st.warning("⚠️ ML Feedback system not available")
+    except Exception as e:
+        st.warning(f"⚠️ Could not load ML feedback: {e!s}")
 
 
 def render_risk_actions():

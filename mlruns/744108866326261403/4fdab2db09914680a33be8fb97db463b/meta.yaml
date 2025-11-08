@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/Anurag/Desktop/Github/finnovate-hackathon/mlruns/744108866326261403/4fdab2db09914680a33be8fb97db463b/artifacts
+end_time: 1762568946376
+entry_point_name: ''
+experiment_id: '744108866326261403'
+lifecycle_stage: active
+run_id: 4fdab2db09914680a33be8fb97db463b
+run_name: priority_ranker
+run_uuid: 4fdab2db09914680a33be8fb97db463b
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1762568943355
+status: 3
+tags: []
+user_id: Anurag

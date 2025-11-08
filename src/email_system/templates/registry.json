@@ -1,0 +1,90 @@
+{
+  "assignment_notification": {
+    "name": "Assignment Notification",
+    "subject": "\ud83d\udd14 New GL Account Assignment: {{ account_code }}",
+    "template_file": "assignment_notification.html",
+    "variables": [
+      "account_code",
+      "account_name",
+      "reviewer_name",
+      "deadline",
+      "balance",
+      "entity"
+    ],
+    "category": "assignment",
+    "priority": "high"
+  },
+  "upload_reminder": {
+    "name": "Upload Reminder",
+    "subject": "\u23f0 Reminder: Upload Supporting Documents for {{ account_code }}",
+    "template_file": "upload_reminder.html",
+    "variables": [
+      "account_code",
+      "reviewer_name",
+      "deadline",
+      "days_remaining",
+      "docs_required"
+    ],
+    "category": "reminder",
+    "priority": "medium"
+  },
+  "review_completion": {
+    "name": "Review Completion Notification",
+    "subject": "\u2705 GL Account Review Completed: {{ account_code }}",
+    "template_file": "review_completion.html",
+    "variables": [
+      "account_code",
+      "account_name",
+      "reviewer_name",
+      "completion_date",
+      "comments",
+      "hygiene_score"
+    ],
+    "category": "notification",
+    "priority": "medium"
+  },
+  "approval_notification": {
+    "name": "Approval Notification",
+    "subject": "\u2728 GL Account Approved: {{ account_code }}",
+    "template_file": "approval_notification.html",
+    "variables": [
+      "account_code",
+      "account_name",
+      "approver_name",
+      "approval_date",
+      "reviewer_name"
+    ],
+    "category": "notification",
+    "priority": "medium"
+  },
+  "sla_breach_alert": {
+    "name": "SLA Breach Alert",
+    "subject": "\ud83d\udea8 URGENT: SLA Breach for GL Account {{ account_code }}",
+    "template_file": "sla_breach_alert.html",
+    "variables": [
+      "account_code",
+      "reviewer_name",
+      "deadline",
+      "days_overdue",
+      "escalation_level",
+      "entity"
+    ],
+    "category": "alert",
+    "priority": "high"
+  },
+  "weekly_summary": {
+    "name": "Weekly Summary Report",
+    "subject": "\ud83d\udcca Weekly GL Review Summary - {{ week_ending }}",
+    "template_file": "weekly_summary.html",
+    "variables": [
+      "week_ending",
+      "total_accounts",
+      "reviewed",
+      "pending",
+      "hygiene_score",
+      "top_accounts"
+    ],
+    "category": "report",
+    "priority": "low"
+  }
+}

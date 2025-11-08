@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly GL Review Summary</title>
+</head>
+
+<body
+    style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f5f5f5;">
+    <table role="presentation" style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="padding: 40px 0;">
+                <table role="presentation"
+                    style="width: 650px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td
+                            style="background: linear-gradient(135deg, #8c564b 0%, #bcbd22 100%); padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+                            <h1 style="margin: 0 0 10px; color: #ffffff; font-size: 26px; font-weight: 600;">
+                                📊 Weekly GL Review Summary
+                            </h1>
+                            <p style="margin: 0; color: #ffffff; font-size: 16px; opacity: 0.95;">
+                                Week Ending: {{ week_ending | date }}
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 40px 30px;">
+                            <p style="margin: 0 0 25px; font-size: 16px; line-height: 1.6; color: #333333;">
+                                Here's your weekly overview of GL account review activities and performance metrics.
+                            </p>
+
+                            <!-- Key Metrics Grid -->
+                            <table role="presentation" style="width: 100%; margin-bottom: 30px;">
+                                <tr>
+                                    <!-- Total Accounts -->
+                                    <td
+                                        style="width: 33%; padding: 15px; background-color: #e3f2fd; border-radius: 6px; text-align: center; vertical-align: top;">
+                                        <p
+                                            style="margin: 0 0 8px; font-size: 14px; color: #1565c0; font-weight: 600; text-transform: uppercase;">
+                                            Total Accounts</p>
+                                        <p style="margin: 0; font-size: 36px; color: #1976d2; font-weight: 700;">{{
+                                            total_accounts }}</p>
+                                    </td>
+                                    <td style="width: 1%;"></td>
+                                    <!-- Reviewed -->
+                                    <td
+                                        style="width: 33%; padding: 15px; background-color: #e8f5e9; border-radius: 6px; text-align: center; vertical-align: top;">
+                                        <p
+                                            style="margin: 0 0 8px; font-size: 14px; color: #2e7d32; font-weight: 600; text-transform: uppercase;">
+                                            Reviewed</p>
+                                        <p style="margin: 0; font-size: 36px; color: #388e3c; font-weight: 700;">{{
+                                            reviewed }}</p>
+                                        <p style="margin: 5px 0 0; font-size: 12px; color: #66bb6a;">
+                                            {% if total_accounts > 0 %}{{ ((reviewed / total_accounts) * 100) | round(1)
+                                            }}%{% else %}0%{% endif %}
+                                        </p>
+                                    </td>
+                                    <td style="width: 1%;"></td>
+                                    <!-- Pending -->
+                                    <td
+                                        style="width: 33%; padding: 15px; background-color: #fff3e0; border-radius: 6px; text-align: center; vertical-align: top;">
+                                        <p
+                                            style="margin: 0 0 8px; font-size: 14px; color: #e65100; font-weight: 600; text-transform: uppercase;">
+                                            Pending</p>
+                                        <p style="margin: 0; font-size: 36px; color: #f57c00; font-weight: 700;">{{
+                                            pending }}</p>
+                                        <p style="margin: 5px 0 0; font-size: 12px; color: #ff9800;">
+                                            {% if total_accounts > 0 %}{{ ((pending / total_accounts) * 100) | round(1)
+                                            }}%{% endif %}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Overall Hygiene Score -->
+                            <table role="presentation"
+                                style="width: 100%; background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%); border-radius: 6px; margin-bottom: 30px;">
+                                <tr>
+                                    <td style="padding: 25px; text-align: center;">
+                                        <p
+                                            style="margin: 0 0 10px; font-size: 16px; color: #666; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                                            Overall Hygiene Score</p>
+                                        <div style="display: inline-block; position: relative;">
+                                            <svg width="140" height="140" style="transform: rotate(-90deg);">
+                                                <circle cx="70" cy="70" r="60" fill="none" stroke="#e0e0e0"
+                                                    stroke-width="12"></circle>
+                                                <circle cx="70" cy="70" r="60" fill="none"
+                                                    stroke="{% if hygiene_score >= 80 %}#4caf50{% elif hygiene_score >= 60 %}#ff9800{% else %}#f44336{% endif %}"
+                                                    stroke-width="12"
+                                                    stroke-dasharray="{{ (hygiene_score / 100) * 377 }} 377"
+                                                    stroke-linecap="round"></circle>
+                                            </svg>
+                                            <div
+                                                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 32px; font-weight: 700; color: {% if hygiene_score >= 80 %}#4caf50{% elif hygiene_score >= 60 %}#ff9800{% else %}#f44336{% endif %};">
+                                                {{ hygiene_score }}
+                                            </div>
+                                        </div>
+                                        <p style="margin: 10px 0 0; font-size: 14px; color: #666;">
+                                            {% if hygiene_score >= 80 %}
+                                            ✅ Excellent data quality!
+                                            {% elif hygiene_score >= 60 %}
+                                            ⚠️ Good, but room for improvement
+                                            {% else %}
+                                            🚨 Needs attention
+                                            {% endif %}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Top Accounts Requiring Attention -->
+                            {% if top_accounts and top_accounts | length > 0 %}
+                            <div style="margin-bottom: 30px;">
+                                <h2
+                                    style="margin: 0 0 15px; font-size: 18px; color: #333; border-bottom: 2px solid #1976d2; padding-bottom: 10px;">
+                                    🔍 Top Accounts Requiring Attention
+                                </h2>
+
+                                <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="background-color: #f5f5f5;">
+                                            <th
+                                                style="padding: 12px; text-align: left; font-size: 13px; color: #666; font-weight: 600; border-bottom: 2px solid #e0e0e0;">
+                                                Account Code</th>
+                                            <th
+                                                style="padding: 12px; text-align: left; font-size: 13px; color: #666; font-weight: 600; border-bottom: 2px solid #e0e0e0;">
+                                                Account Name</th>
+                                            <th
+                                                style="padding: 12px; text-align: center; font-size: 13px; color: #666; font-weight: 600; border-bottom: 2px solid #e0e0e0;">
+                                                Status</th>
+                                            <th
+                                                style="padding: 12px; text-align: right; font-size: 13px; color: #666; font-weight: 600; border-bottom: 2px solid #e0e0e0;">
+                                                Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for account in top_accounts[:5] %}
+                                        <tr style="border-bottom: 1px solid #f0f0f0;">
+                                            <td style="padding: 12px; font-size: 13px; color: #333;">{{ account.code }}
+                                            </td>
+                                            <td style="padding: 12px; font-size: 13px; color: #333;">{{ account.name }}
+                                            </td>
+                                            <td style="padding: 12px; text-align: center;">
+                                                <span
+                                                    style="display: inline-block; padding: 4px 10px; background-color: {% if account.status == 'overdue' %}#ffebee{% elif account.status == 'pending' %}#fff3e0{% else %}#e8f5e9{% endif %}; color: {% if account.status == 'overdue' %}#c62828{% elif account.status == 'pending' %}#ef6c00{% else %}#2e7d32{% endif %}; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase;">
+                                                    {{ account.status }}
+                                                </span>
+                                            </td>
+                                            <td
+                                                style="padding: 12px; font-size: 13px; color: #333; text-align: right; font-weight: 600;">
+                                                {{ account.balance | currency }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% endif %}
+
+                            <!-- Performance Trend -->
+                            <div
+                                style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin-bottom: 25px; border-left: 4px solid #2196f3;">
+                                <h3 style="margin: 0 0 15px; font-size: 16px; color: #1976d2;">
+                                    📈 Performance Insights
+                                </h3>
+                                <ul
+                                    style="margin: 0; padding-left: 20px; color: #333; font-size: 14px; line-height: 1.8;">
+                                    <li style="margin-bottom: 8px;">
+                                        {% if reviewed > 0 and total_accounts > 0 %}
+                                        {% if (reviewed / total_accounts) >= 0.8 %}
+                                        ✅ Excellent progress! {{ ((reviewed / total_accounts) * 100) | round(0) }}% of
+                                        accounts reviewed
+                                        {% elif (reviewed / total_accounts) >= 0.5 %}
+                                        👍 Good momentum! {{ ((reviewed / total_accounts) * 100) | round(0) }}% of
+                                        accounts reviewed
+                                        {% else %}
+                                        ⚠️ More attention needed - only {{ ((reviewed / total_accounts) * 100) |
+                                        round(0) }}% reviewed
+                                        {% endif %}
+                                        {% else %}
+                                        No reviews completed this week
+                                        {% endif %}
+                                    </li>
+                                    <li style="margin-bottom: 8px;">
+                                        {% if hygiene_score >= 80 %}
+                                        🏆 Data quality is excellent - keep it up!
+                                        {% elif hygiene_score >= 60 %}
+                                        📊 Data quality is acceptable but can improve
+                                        {% else %}
+                                        🚨 Data quality requires immediate attention
+                                        {% endif %}
+                                    </li>
+                                    <li>
+                                        {% if pending > 0 %}
+                                        ⏰ {{ pending }} accounts still pending review - encourage teams to prioritize
+                                        {% else %}
+                                        🎉 All accounts reviewed - outstanding work!
+                                        {% endif %}
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <!-- Action Items -->
+                            <div
+                                style="background-color: #fff3e0; border-radius: 6px; padding: 20px; margin-bottom: 25px; border-left: 4px solid #ff9800;">
+                                <h3 style="margin: 0 0 10px; font-size: 16px; color: #e65100;">
+                                    📌 Recommended Actions
+                                </h3>
+                                <ul style="margin: 0; padding-left: 20px; color: #333; font-size: 14px;">
+                                    {% if pending > (total_accounts * 0.3) %}
+                                    <li style="margin-bottom: 8px;">Follow up with reviewers on {{ pending }} pending
+                                        accounts</li>
+                                    {% endif %}
+                                    {% if hygiene_score < 70 %} <li style="margin-bottom: 8px;">Review data quality
+                                        issues and provide guidance to teams</li>
+                                        {% endif %}
+                                        <li style="margin-bottom: 8px;">Schedule check-ins with teams on high-value
+                                            accounts</li>
+                                        <li>Share best practices from top-performing reviewers</li>
+                                </ul>
+                            </div>
+
+                            <!-- CTA Button -->
+                            <table role="presentation" style="width: 100%; margin-bottom: 20px;">
+                                <tr>
+                                    <td style="text-align: center; padding: 10px 0;">
+                                        <a href="#"
+                                            style="display: inline-block; padding: 12px 40px; background-color: #1976d2; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px;">
+                                            View Full Dashboard
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p
+                                style="margin: 20px 0 0; font-size: 14px; line-height: 1.6; color: #666; text-align: center;">
+                                This summary is generated automatically every Monday at 9:00 AM.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td
+                            style="background-color: #f8f9fa; padding: 20px 30px; border-radius: 0 0 8px 8px; border-top: 1px solid #e9ecef;">
+                            <p style="margin: 0 0 10px; font-size: 12px; color: #666; text-align: center;">
+                                This is an automated weekly report from <strong>{{ app_name }}</strong>
+                            </p>
+                            <p style="margin: 0; font-size: 12px; color: #999; text-align: center;">
+                                © {{ current_year }} Adani Group. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+
+</html>

@@ -44,11 +44,13 @@ def generate_proactive_insights(entity: str, period: str) -> list[dict]:
 
     Args:
         entity: Entity code
-        period: Period (e.g., '2024-03')
+        period: Period (e.g., '2024-03' or 'Mar-24')
 
     Returns:
         list: List of insight dictionaries with type, priority, and message
     """
+    import logging
+
     from .analytics import (
         calculate_gl_hygiene_score,
         calculate_review_status_summary,
@@ -56,11 +58,40 @@ def generate_proactive_insights(entity: str, period: str) -> list[dict]:
         identify_anomalies_ml,
     )
 
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+
     insights = []
+
+    # Normalize period format (handle both 'Mar-24' and '2024-03' formats)
+    normalized_period = period
+    if "-" in period and len(period) == 6:  # Format: Mar-24
+        month_map = {
+            "Jan": "01",
+            "Feb": "02",
+            "Mar": "03",
+            "Apr": "04",
+            "May": "05",
+            "Jun": "06",
+            "Jul": "07",
+            "Aug": "08",
+            "Sep": "09",
+            "Oct": "10",
+            "Nov": "11",
+            "Dec": "12",
+        }
+        month_abbr, year = period.split("-")
+        if month_abbr in month_map:
+            normalized_period = f"20{year}-{month_map[month_abbr]}"
+
+    logger.info(
+        f"Generating insights for entity={entity}, period={period} (normalized: {normalized_period})"
+    )
 
     try:
         # Insight 1: Hygiene Score Assessment
-        hygiene_data = calculate_gl_hygiene_score(entity, period)
+        hygiene_data = calculate_gl_hygiene_score(entity, normalized_period)
+        logger.info(f"Hygiene data: {hygiene_data}")
         if "overall_score" in hygiene_data:
             score = hygiene_data["overall_score"]
             grade = hygiene_data["grade"]
@@ -97,7 +128,8 @@ def generate_proactive_insights(entity: str, period: str) -> list[dict]:
                 )
 
         # Insight 2: Review Status
-        review_data = calculate_review_status_summary(entity, period)
+        review_data = calculate_review_status_summary(entity, normalized_period)
+        logger.info(f"Review data: {review_data}")
         if "overall" in review_data:
             completion = review_data["overall"]["completion_pct"]
             pending = review_data["overall"]["pending"]
@@ -124,7 +156,8 @@ def generate_proactive_insights(entity: str, period: str) -> list[dict]:
                 )
 
         # Insight 3: Anomaly Detection
-        anomaly_data = identify_anomalies_ml(entity, period, threshold=2.0)
+        anomaly_data = identify_anomalies_ml(entity, normalized_period, threshold=2.0)
+        logger.info(f"Anomaly data: {anomaly_data.get('anomalies_detected', 0)} anomalies")
         if anomaly_data.get("anomalies_detected", 0) > 0:
             count = anomaly_data["anomalies_detected"]
             top_anomaly = anomaly_data["anomalies"][0] if anomaly_data["anomalies"] else None
@@ -141,7 +174,8 @@ def generate_proactive_insights(entity: str, period: str) -> list[dict]:
                 )
 
         # Insight 4: Pending Items
-        pending_data = get_pending_items_report(entity, period)
+        pending_data = get_pending_items_report(entity, normalized_period)
+        logger.info(f"Pending items: {len(pending_data.get('items', []))}")
         critical_pending = len(
             [item for item in pending_data.get("items", []) if item["priority"] == "Critical"]
         )
@@ -174,7 +208,10 @@ def generate_proactive_insights(entity: str, period: str) -> list[dict]:
         priority_order = {"critical": 0, "high": 1, "medium": 2, "info": 3}
         insights.sort(key=lambda x: priority_order.get(x["priority"], 4))
 
+        logger.info(f"Generated {len(insights)} insights total")
+
     except Exception as e:
+        logger.error(f"Error generating insights: {e!s}", exc_info=True)
         insights.append(
             {
                 "type": "error",
@@ -205,14 +242,11 @@ def generate_executive_summary(entity: str, period: str) -> dict:
         get_pending_items_report,
         identify_anomalies_ml,
     )
-    from .db import get_postgres_session
     from .db.postgres import get_gl_accounts_by_period
-
-    session = get_postgres_session()
 
     try:
         # Get all accounts for entity
-        accounts = get_gl_accounts_by_period(period, session=session)
+        accounts = get_gl_accounts_by_period(period)
         entity_accounts = [acc for acc in accounts if acc.entity == entity]
 
         # Calculate key metrics
@@ -222,7 +256,7 @@ def generate_executive_summary(entity: str, period: str) -> dict:
         # Category breakdown
         categories = {}
         for acc in entity_accounts:
-            cat = acc.category
+            cat = acc.account_category
             categories[cat] = categories.get(cat, 0) + float(acc.balance)
 
         # Get comprehensive metrics
@@ -303,8 +337,8 @@ def generate_executive_summary(entity: str, period: str) -> dict:
             "summary_text": f"{entity} for {period}: {overall_status}. {len(highlights)} positive indicators, {len(concerns)} areas needing attention.",
         }
 
-    finally:
-        session.close()
+    except Exception as e:
+        return {"error": str(e)}
 
 
 def generate_drill_down_report(
@@ -325,13 +359,10 @@ def generate_drill_down_report(
     Returns:
         dict: Drill-down analysis with filtered accounts and metrics
     """
-    from .db import get_postgres_session
     from .db.postgres import get_gl_accounts_by_period
 
-    session = get_postgres_session()
-
     try:
-        accounts = get_gl_accounts_by_period(period, session=session)
+        accounts = get_gl_accounts_by_period(period)
 
         # Filter by entity and dimension
         filtered_accounts = [
@@ -358,7 +389,7 @@ def generate_drill_down_report(
                     "balance": float(acc.balance),
                     "review_status": acc.review_status,
                     "criticality": acc.criticality,
-                    "category": acc.category,
+                    "category": acc.account_category,
                     "department": acc.department,
                 }
                 for acc in filtered_accounts
@@ -397,8 +428,8 @@ def generate_drill_down_report(
             "all_accounts": df.to_dict("records"),
         }
 
-    finally:
-        session.close()
+    except Exception as e:
+        return {"error": str(e)}
 
 
 def compare_multi_period(
@@ -416,16 +447,13 @@ def compare_multi_period(
         dict: Multi-period comparison with trends
     """
     from .analytics import calculate_gl_hygiene_score, calculate_review_status_summary
-    from .db import get_postgres_session
     from .db.postgres import get_gl_accounts_by_period
-
-    session = get_postgres_session()
 
     try:
         results = []
 
         for period in periods:
-            accounts = get_gl_accounts_by_period(period, session=session)
+            accounts = get_gl_accounts_by_period(period)
             entity_accounts = [acc for acc in accounts if acc.entity == entity]
 
             if not entity_accounts:
@@ -491,5 +519,5 @@ def compare_multi_period(
             "summary": f"Multi-period analysis for {entity}: Balance {trends['total_balance']['trend']}, Hygiene {trends['hygiene_score']['trend']}, Completion {trends['completion_rate']['trend']}",
         }
 
-    finally:
-        session.close()
+    except Exception as e:
+        return {"error": str(e)}

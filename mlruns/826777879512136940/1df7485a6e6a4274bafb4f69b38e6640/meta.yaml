@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/Anurag/Desktop/Github/finnovate-hackathon/mlruns/826777879512136940/1df7485a6e6a4274bafb4f69b38e6640/artifacts
+end_time: 1762569281768
+entry_point_name: ''
+experiment_id: '826777879512136940'
+lifecycle_stage: active
+run_id: 1df7485a6e6a4274bafb4f69b38e6640
+run_name: anomaly_detector
+run_uuid: 1df7485a6e6a4274bafb4f69b38e6640
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1762569275918
+status: 3
+tags: []
+user_id: Anurag
